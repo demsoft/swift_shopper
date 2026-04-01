@@ -184,14 +184,34 @@ public class DbSwiftShopperService : ISwiftShopperService
             .ToListAsync(cancellationToken);
 
         var orderIds = orders.Select(x => x.Id).ToList();
-        var allItems = await _dbContext.OrderItems.AsNoTracking()
+
+        var allOrderItems = await _dbContext.OrderItems.AsNoTracking()
             .Where(x => orderIds.Contains(x.OrderId))
+            .ToListAsync(cancellationToken);
+
+        var allRequests = await _dbContext.ShoppingRequests.AsNoTracking()
+            .Where(x => requestIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         return orders.Select(order =>
         {
-            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
-            var estimatedTotal = items.Sum(i => i.EstimatedPrice * i.Quantity);
+            var orderItems = allOrderItems.Where(i => i.OrderId == order.Id).ToList();
+            decimal estimatedTotal;
+            int totalItemsCount;
+
+            if (orderItems.Count > 0)
+            {
+                estimatedTotal = orderItems.Sum(i => i.EstimatedPrice * i.Quantity);
+                totalItemsCount = orderItems.Count;
+            }
+            else
+            {
+                // No shopper yet — estimate from original request items
+                var request = allRequests.FirstOrDefault(r => r.Id == order.RequestId);
+                estimatedTotal = request?.Items.Sum(i => i.Price * i.Quantity) ?? 0m;
+                totalItemsCount = request?.Items.Count ?? 0;
+            }
+
             return new ActiveOrderDto
             {
                 Id = order.Id,
@@ -205,7 +225,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 DeliveryFee = order.DeliveryFee,
                 ServiceFee = order.ServiceFee,
                 PickedItemsCount = order.PickedItemsCount,
-                TotalItemsCount = items.Count,
+                TotalItemsCount = totalItemsCount,
                 EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
                 UpdatedAt = order.UpdatedAt,
             };

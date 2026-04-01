@@ -306,8 +306,22 @@ public class InMemorySwiftShopperService : ISwiftShopperService
             .OrderByDescending(x => x.UpdatedAt)
             .Select(order =>
             {
-                var items = _orderItems.Where(i => i.OrderId == order.Id).ToList();
-                var estimatedTotal = items.Sum(i => i.EstimatedPrice * i.Quantity);
+                var orderItems = _orderItems.Where(i => i.OrderId == order.Id).ToList();
+                decimal estimatedTotal;
+                int totalItemsCount;
+
+                if (orderItems.Count > 0)
+                {
+                    estimatedTotal = orderItems.Sum(i => i.EstimatedPrice * i.Quantity);
+                    totalItemsCount = orderItems.Count;
+                }
+                else
+                {
+                    var request = _requests.FirstOrDefault(r => r.Id == order.RequestId);
+                    estimatedTotal = request?.Items.Sum(i => i.Price * i.Quantity) ?? 0m;
+                    totalItemsCount = request?.Items.Count ?? 0;
+                }
+
                 return new ActiveOrderDto
                 {
                     Id = order.Id,
@@ -321,7 +335,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
                     DeliveryFee = order.DeliveryFee,
                     ServiceFee = order.ServiceFee,
                     PickedItemsCount = order.PickedItemsCount,
-                    TotalItemsCount = items.Count,
+                    TotalItemsCount = totalItemsCount,
                     EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
                     UpdatedAt = order.UpdatedAt,
                 };
