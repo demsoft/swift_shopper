@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
 import '../../shared/data/swift_shopper_repository.dart';
+import 'active_job_screen.dart';
 
 class RequestDetailScreen extends ConsumerStatefulWidget {
   const RequestDetailScreen({super.key, required this.request});
@@ -37,7 +38,10 @@ class _RequestDetailScreenState
             backgroundColor: AppColors.primary,
           ),
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const ActiveJobScreen()),
+          (route) => route.isFirst,
+        );
       }
     } catch (e) {
       if (mounted) {

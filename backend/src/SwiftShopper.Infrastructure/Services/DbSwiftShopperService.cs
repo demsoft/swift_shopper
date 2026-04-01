@@ -439,11 +439,13 @@ public class DbSwiftShopperService : ISwiftShopperService
         string shopperId, CancellationToken cancellationToken)
     {
         var order = await _dbContext.Orders
-            .FirstOrDefaultAsync(x =>
+            .Where(x =>
                 x.ShopperId == shopperId &&
                 x.Status != OrderStatus.Delivered &&
-                x.Status != OrderStatus.Pending,
-                cancellationToken);
+                x.Status != OrderStatus.Pending &&
+                x.Status != OrderStatus.Cancelled)
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (order is null) return null;
 

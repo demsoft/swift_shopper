@@ -9,11 +9,25 @@ import '../providers/home_provider.dart';
 // ===========================================================================
 // ACTIVE JOB SCREEN — loads real data from /api/orders/shopper/active-job
 // ===========================================================================
-class ActiveJobScreen extends ConsumerWidget {
+class ActiveJobScreen extends ConsumerStatefulWidget {
   const ActiveJobScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActiveJobScreen> createState() => _ActiveJobScreenState();
+}
+
+class _ActiveJobScreenState extends ConsumerState<ActiveJobScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Always do a fresh fetch when this screen is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(activeJobProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final jobAsync = ref.watch(activeJobProvider);
 
     return Scaffold(
@@ -26,10 +40,24 @@ class ActiveJobScreen extends ConsumerWidget {
           error: (e, _) => Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(
-                'Failed to load job: $e',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildBackHeader(context),
+                  const SizedBox(height: 40),
+                  const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Could not load job.\n$e',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => ref.invalidate(activeJobProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             ),
           ),

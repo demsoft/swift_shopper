@@ -556,10 +556,15 @@ public class InMemorySwiftShopperService : ISwiftShopperService
 
     public Task<ActiveJobDto?> GetActiveJobAsync(string shopperId, CancellationToken cancellationToken)
     {
-        var order = _orders.FirstOrDefault(o =>
-            o.ShopperId != null &&
-            o.ShopperId.Equals(shopperId, StringComparison.OrdinalIgnoreCase) &&
-            o.Status != OrderStatus.Delivered);
+        var order = _orders
+            .Where(o =>
+                o.ShopperId != null &&
+                o.ShopperId.Equals(shopperId, StringComparison.OrdinalIgnoreCase) &&
+                o.Status != OrderStatus.Delivered &&
+                o.Status != OrderStatus.Pending &&
+                o.Status != OrderStatus.Cancelled)
+            .OrderByDescending(o => o.UpdatedAt)
+            .FirstOrDefault();
 
         if (order is null) return Task.FromResult<ActiveJobDto?>(null);
 
