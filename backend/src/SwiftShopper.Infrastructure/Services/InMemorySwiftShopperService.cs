@@ -561,8 +561,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
                 o.ShopperId != null &&
                 o.ShopperId.Equals(shopperId, StringComparison.OrdinalIgnoreCase) &&
                 o.Status != OrderStatus.Delivered &&
-                o.Status != OrderStatus.Pending &&
-                o.Status != OrderStatus.Cancelled)
+                o.Status != OrderStatus.Pending)
             .OrderByDescending(o => o.UpdatedAt)
             .FirstOrDefault();
 
