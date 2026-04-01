@@ -200,6 +200,48 @@ class OrderTrackingData {
   final int estimatedDeliveryMinutes;
 }
 
+// ── Available Request (for shoppers) ────────────────────────────────────────
+
+class AvailableRequestItem {
+  const AvailableRequestItem({
+    required this.name,
+    required this.unit,
+    required this.description,
+    required this.quantity,
+    required this.price,
+  });
+
+  final String name;
+  final String unit;
+  final String description;
+  final int quantity;
+  final double price;
+}
+
+class AvailableRequestData {
+  const AvailableRequestData({
+    required this.requestId,
+    required this.preferredStore,
+    required this.marketType,
+    required this.budget,
+    required this.deliveryAddress,
+    required this.itemsCount,
+    required this.items,
+    required this.createdAt,
+  });
+
+  final String requestId;
+  final String preferredStore;
+  final String marketType;
+  final double budget;
+  final String deliveryAddress;
+  final int itemsCount;
+  final List<AvailableRequestItem> items;
+  final String createdAt;
+
+  List<String> get itemNames => items.map((i) => i.name).toList();
+}
+
 class MarketData {
   const MarketData({
     required this.marketId,

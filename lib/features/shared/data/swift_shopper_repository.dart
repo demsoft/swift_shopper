@@ -166,6 +166,47 @@ class SwiftShopperRepository {
     }).toList();
   }
 
+  Future<void> acceptRequest({
+    required String requestId,
+    required String storeName,
+    required String storeAddress,
+  }) async {
+    await apiClient.post('/api/requests/$requestId/accept', {
+      'storeName': storeName,
+      'storeAddress': storeAddress,
+    });
+  }
+
+  Future<List<AvailableRequestData>> getAvailableRequests() async {
+    final data = await apiClient.get('/api/requests/available');
+    if (data is! List) return const [];
+    return data.map((item) {
+      final map = item as Map<String, dynamic>;
+      final rawItems = map['items'] as List? ?? [];
+      final parsedItems = rawItems.map((i) {
+        final m = i as Map<String, dynamic>;
+        return AvailableRequestItem(
+          name: m['name']?.toString() ?? '',
+          unit: m['unit']?.toString() ?? '',
+          description: m['description']?.toString() ?? '',
+          quantity: (m['quantity'] as num? ?? 1).toInt(),
+          price: (m['price'] as num? ?? 0).toDouble(),
+        );
+      }).where((i) => i.name.isNotEmpty).toList();
+      final marketTypeInt = map['marketType'] as int? ?? 0;
+      return AvailableRequestData(
+        requestId: map['id']?.toString() ?? '',
+        preferredStore: map['preferredStore']?.toString() ?? 'Store',
+        marketType: marketTypeInt == 0 ? 'Supermarket' : 'Open Market',
+        budget: (map['budget'] as num? ?? 0).toDouble(),
+        deliveryAddress: map['deliveryAddress']?.toString() ?? '',
+        itemsCount: rawItems.length,
+        items: parsedItems,
+        createdAt: _friendlyDate(map['createdAt']?.toString()),
+      );
+    }).toList();
+  }
+
   Future<List<ActiveJobItem>> getOrderItems({required String orderId}) async {
     final data = await apiClient.get('/api/orders/$orderId/items');
     if (data is! List) return const [];
@@ -268,6 +309,7 @@ class SwiftShopperRepository {
                 'quantity': item.quantity,
                 'unit': item.unit,
                 'description': item.description,
+                'price': item.price,
                 'maxPrice': item.maxPrice,
               })
           .toList(),

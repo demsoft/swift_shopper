@@ -8,6 +8,7 @@ import '../providers/home_provider.dart';
 import '../../create_request/presentation/create_request_screen.dart';
 import 'order_details_screen.dart';
 import 'active_job_screen.dart';
+import 'request_detail_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -38,7 +39,6 @@ class HomeScreen extends ConsumerWidget {
                   firstName: firstName,
                   avatarUrl: avatarUrl,
                   activeOrdersAsync: activeOrdersAsync,
-                  recentRequestsAsync: recentRequestsAsync,
                 )
               : _CustomerHomeView(
                   firstName: firstName,
@@ -100,16 +100,6 @@ class _CustomerHomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeOrders = activeOrdersAsync.valueOrNull ?? const <ActiveOrder>[];
-    final primaryOrder = activeOrders.isNotEmpty
-        ? activeOrders.first
-        : const ActiveOrder(
-            orderId: '',
-            title: 'Spar Supermarket',
-            store: 'Order #SS-2940 • 3 Items',
-            status: 'IN PROGRESS',
-          );
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
@@ -126,10 +116,17 @@ class _CustomerHomeView extends StatelessWidget {
           onTap: () {},
         ),
         const SizedBox(height: 12),
-        _CustomerOrderCard(
-          order: primaryOrder,
-          amountText: '₦8,400',
-          onTap: () => onTrackOrder(primaryOrder),
+        activeOrdersAsync.when(
+          loading: () => const _OrderCardSkeleton(),
+          error: (_, __) => const _OrderCardEmpty(),
+          data: (orders) {
+            if (orders.isEmpty) return const _OrderCardEmpty();
+            final latest = orders.first;
+            return _CustomerOrderCard(
+              order: latest,
+              onTap: () => onTrackOrder(latest),
+            );
+          },
         ),
         const SizedBox(height: 24),
         _SectionHeader(
@@ -158,71 +155,124 @@ class _CustomerHomeView extends StatelessWidget {
 // ===========================================================================
 // SHOPPER HOME VIEW
 // ===========================================================================
-class _ShopperHomeView extends StatelessWidget {
+class _ShopperHomeView extends ConsumerWidget {
   const _ShopperHomeView({
     required this.firstName,
     required this.avatarUrl,
     required this.activeOrdersAsync,
-    required this.recentRequestsAsync,
   });
 
   final String firstName;
   final String? avatarUrl;
   final AsyncValue<List<ActiveOrder>> activeOrdersAsync;
-  final AsyncValue<List<RecentRequest>> recentRequestsAsync;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final requests = recentRequestsAsync.valueOrNull ?? const <RecentRequest>[];
-    final requestCards = requests.take(2).toList().isEmpty
-        ? const [
-            RecentRequest(
-              title: 'Prince Ebeano',
-              date: 'Lekki Phase 1 • 1.2km',
-              itemsCount: 8,
-            ),
-            RecentRequest(
-              title: 'Spar Market',
-              date: 'Victoria Island • 2.8km',
-              itemsCount: 15,
-            ),
-          ]
-        : requests.take(2).toList();
+    final availableAsync = ref.watch(availableRequestsProvider);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      children: [
-        _TopHeader(firstName: firstName, avatarUrl: avatarUrl),
-        const SizedBox(height: 16),
-        const _EarningsCard(),
-        const SizedBox(height: 14),
-        const _ShopperStatsRow(),
-        const SizedBox(height: 24),
-        Text(
-          'Active Shopping',
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async => ref.invalidate(availableRequestsProvider),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          _TopHeader(firstName: firstName, avatarUrl: avatarUrl),
+          const SizedBox(height: 16),
+          const _EarningsCard(),
+          const SizedBox(height: 14),
+          const _ShopperStatsRow(),
+          const SizedBox(height: 24),
+          Text(
+            'Active Shopping',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        const _ActiveShoppingCard(),
-        const SizedBox(height: 24),
-        _SectionHeader(
-          title: 'New Requests',
-          action: 'See All',
-          actionColor: AppColors.primary,
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        ...requestCards.map(
-          (r) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _RequestCard(request: r),
+          const SizedBox(height: 12),
+          const _ActiveShoppingCard(),
+          const SizedBox(height: 24),
+          _SectionHeader(
+            title: 'New Requests',
+            action: 'See All',
+            actionColor: AppColors.primary,
+            onTap: () {},
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          availableAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+            error: (e, _) => Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi_off_rounded, color: AppColors.textSecondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(e.toString(),
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
+                  ),
+                  TextButton(
+                    onPressed: () => ref.invalidate(availableRequestsProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+            data: (requests) {
+              if (requests.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.inbox_rounded,
+                          size: 40,
+                          color: AppColors.textSecondary.withValues(alpha: 0.4)),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'No new requests right now.\nCheck back soon!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return Column(
+                children: requests
+                    .map((r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _RequestCard(
+                    request: r,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RequestDetailScreen(request: r),
+                      ),
+                    ),
+                  ),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -507,126 +557,189 @@ class _NewRequestBanner extends StatelessWidget {
 // Customer: Active Order Card
 // ---------------------------------------------------------------------------
 class _CustomerOrderCard extends StatelessWidget {
-  const _CustomerOrderCard({
-    required this.order,
-    required this.amountText,
-    this.onTap,
-  });
+  const _CustomerOrderCard({required this.order, this.onTap});
 
   final ActiveOrder order;
-  final String amountText;
   final VoidCallback? onTap;
+
+  static double _progress(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted': return 0.2;
+      case 'shopping': return 0.45;
+      case 'purchased': return 0.7;
+      case 'on the way': return 0.85;
+      case 'delivered': return 1.0;
+      default: return 0.05;
+    }
+  }
+
+  String _fmtTotal(double v) => '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final progress = _progress(order.status);
+    final photoUrl = order.storePhotoUrl;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 76,
+                    height: 76,
+                    child: photoUrl != null && photoUrl.isNotEmpty
+                        ? Image.network(
+                            photoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholder(),
+                          )
+                        : _placeholder(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.title.isNotEmpty ? order.title : 'Order',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        order.orderId,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (order.total > 0)
+                  Text(
+                    _fmtTotal(order.total),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Text(
+                  order.status.toUpperCase(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${(progress * 100).toInt()}%',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                color: AppColors.primary,
+                backgroundColor: AppColors.border,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() => Container(
+        color: AppColors.accentSurface,
+        child: const Icon(Icons.local_mall_rounded,
+            color: AppColors.primaryDark, size: 36),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// Active order skeleton (loading state)
+// ---------------------------------------------------------------------------
+class _OrderCardSkeleton extends StatelessWidget {
+  const _OrderCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 120,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+            color: AppColors.primary, strokeWidth: 2),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// No active orders state
+// ---------------------------------------------------------------------------
+class _OrderCardEmpty extends StatelessWidget {
+  const _OrderCardEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/order.png',
-                  width: 76,
-                  height: 76,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: AppColors.accentSurface,
-                    ),
-                    child: const Icon(
-                      Icons.local_mall_rounded,
-                      color: AppColors.primaryDark,
-                      size: 36,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      order.store,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                amountText,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Text(
-                'PICKING ITEMS',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                order.status.toUpperCase(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
+          Icon(Icons.shopping_cart_outlined,
+              size: 36,
+              color: AppColors.textSecondary.withValues(alpha: 0.4)),
           const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: const LinearProgressIndicator(
-              value: 0.65,
-              minHeight: 8,
-              color: AppColors.primary,
-              backgroundColor: AppColors.border,
-            ),
+          const Text(
+            'No active orders',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
         ],
       ),
-    ),
     );
   }
 }
@@ -1074,21 +1187,22 @@ class _ActiveShoppingCard extends StatelessWidget {
 // Shopper: Request Card
 // ---------------------------------------------------------------------------
 class _RequestCard extends StatelessWidget {
-  const _RequestCard({required this.request});
-  final RecentRequest request;
+  const _RequestCard({required this.request, this.onTap});
+  final AvailableRequestData request;
+  final VoidCallback? onTap;
+
+  String _fmtBudget(double v) =>
+      '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isLarge = request.itemsCount > 10;
-    final price = isLarge ? '₦5,150' : '₦3,400';
-    final tag2 = isLarge ? 'HEAVY LOAD' : 'FAST TRACK';
-    final image = isLarge
-        ? 'assets/images/screen2.png'
-        : 'assets/images/screen1.png';
+    final preview = request.itemNames.take(3).join(', ');
 
-    return Container(
-      padding: const EdgeInsets.all(12),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1101,47 +1215,20 @@ class _RequestCard extends StatelessWidget {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Store image with price badge
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              children: [
-                Image.asset(
-                  image,
-                  width: 110,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 110,
-                    height: 100,
-                    color: AppColors.accentSurface,
-                    child: const Icon(
-                      Icons.storefront_rounded,
-                      color: AppColors.primaryDark,
-                      size: 40,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    color: AppColors.warning,
-                    child: Text(
-                      price,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          // Icon box
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.accentSurface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.storefront_rounded,
+              color: AppColors.primaryDark,
+              size: 28,
             ),
           ),
           const SizedBox(width: 12),
@@ -1151,48 +1238,76 @@ class _RequestCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  request.title,
+                  request.preferredStore,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  '${request.date} away',
+                  request.deliveryAddress,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (preview.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
                   children: [
                     _PillLabel(label: '${request.itemsCount} ITEMS'),
-                    _PillLabel(label: tag2),
+                    _PillLabel(label: request.marketType.toUpperCase()),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // Arrow button
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F2EF),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textPrimary,
-              size: 22,
-            ),
+          // Budget + arrow
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (request.budget > 0)
+                Text(
+                  _fmtBudget(request.budget),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF0F2EF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textPrimary,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    ),
     );
   }
 }

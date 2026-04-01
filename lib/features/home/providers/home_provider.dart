@@ -34,6 +34,10 @@ final recentRequestsProvider = FutureProvider<List<RecentRequest>>((ref) async {
   return repository.getRecentRequests(customerId: userId);
 });
 
+final availableRequestsProvider = FutureProvider<List<AvailableRequestData>>((ref) async {
+  return ref.read(swiftShopperRepositoryProvider).getAvailableRequests();
+});
+
 final activeJobProvider = FutureProvider<ActiveJobData?>((ref) async {
   final repository = ref.read(swiftShopperRepositoryProvider);
   return repository.getActiveJob();

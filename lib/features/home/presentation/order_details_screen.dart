@@ -76,6 +76,21 @@ class OrderDetailsScreen extends ConsumerWidget {
             final totalCount = tracking?.totalItemsCount ?? 0;
             final minsLeft = tracking?.estimatedDeliveryMinutes ?? 0;
 
+            // Resolve photo: try order.storePhotoUrl first, then
+            // search all loaded markets case-insensitively by store name
+            final supermarkets =
+                ref.watch(supermarketsProvider).valueOrNull ?? [];
+            final openMarkets =
+                ref.watch(openMarketsProvider).valueOrNull ?? [];
+            final photoUrl = order.storePhotoUrl?.isNotEmpty == true
+                ? order.storePhotoUrl
+                : [...supermarkets, ...openMarkets]
+                    .where((m) =>
+                        m.name.toLowerCase() == storeName.toLowerCase())
+                    .map((m) => m.photoUrl)
+                    .firstWhere((u) => u != null && u.isNotEmpty,
+                        orElse: () => null);
+
             return Column(
               children: [
                 _buildHeader(context, ref,
@@ -92,7 +107,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 16),
-                          _buildStoreImage(storeName, status, order.storePhotoUrl),
+                          _buildStoreImage(storeName, status, photoUrl),
                           const SizedBox(height: 16),
                           _buildStatusCard(
                             status: status,

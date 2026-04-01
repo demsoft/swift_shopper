@@ -4,11 +4,11 @@ namespace SwiftShopper.Application.Contracts.Requests;
 
 public class AcceptRequestDto
 {
-    public required string ShopperId { get; init; }
+    public string ShopperId { get; init; } = string.Empty;
 
     public required string StoreName { get; init; }
 
-    public required string StoreAddress { get; init; }
+    public string StoreAddress { get; init; } = string.Empty;
 }
 
 public class UpdateOrderItemDto
