@@ -242,21 +242,51 @@ public class DbSwiftShopperService : ISwiftShopperService
     public async Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(
         string orderId, CancellationToken cancellationToken)
     {
-        var items = await _dbContext.OrderItems.AsNoTracking()
+        var orderItems = await _dbContext.OrderItems.AsNoTracking()
             .Where(x => x.OrderId == orderId)
             .ToListAsync(cancellationToken);
 
-        return items.Select(i => new ActiveJobItemDto
+        // Shopper has accepted — return live order items with pick status
+        if (orderItems.Count > 0)
         {
-            Id = i.Id,
-            Name = i.Name,
-            Unit = i.Unit,
-            Description = i.Description,
-            Quantity = i.Quantity,
-            EstimatedPrice = i.EstimatedPrice,
-            FoundPrice = i.FoundPrice,
-            Status = i.Status,
-            PhotoUrl = i.PhotoUrl,
+            return orderItems.Select(i => new ActiveJobItemDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                Unit = i.Unit,
+                Description = i.Description,
+                Quantity = i.Quantity,
+                EstimatedPrice = i.EstimatedPrice,
+                FoundPrice = i.FoundPrice,
+                Status = i.Status,
+                PhotoUrl = i.PhotoUrl,
+            }).ToList();
+        }
+
+        // No shopper yet — fall back to the original request items
+        var requestId = await _dbContext.Orders.AsNoTracking()
+            .Where(x => x.Id == orderId)
+            .Select(x => x.RequestId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (requestId is null) return [];
+
+        var request = await _dbContext.ShoppingRequests.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken);
+
+        if (request is null) return [];
+
+        return request.Items.Select((item, index) => new ActiveJobItemDto
+        {
+            Id = index,
+            Name = item.Name,
+            Unit = item.Unit,
+            Description = item.Description,
+            Quantity = item.Quantity,
+            EstimatedPrice = item.Price,
+            FoundPrice = null,
+            Status = OrderItemStatus.Pending,
+            PhotoUrl = null,
         }).ToList();
     }
 

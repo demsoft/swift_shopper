@@ -347,9 +347,13 @@ public class InMemorySwiftShopperService : ISwiftShopperService
 
     public Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(string orderId, CancellationToken cancellationToken)
     {
-        var items = _orderItems
+        var orderItems = _orderItems
             .Where(x => x.OrderId.Equals(orderId, StringComparison.OrdinalIgnoreCase))
-            .Select(i => new ActiveJobItemDto
+            .ToList();
+
+        if (orderItems.Count > 0)
+        {
+            var result = orderItems.Select(i => new ActiveJobItemDto
             {
                 Id = i.Id,
                 Name = i.Name,
@@ -360,10 +364,31 @@ public class InMemorySwiftShopperService : ISwiftShopperService
                 FoundPrice = i.FoundPrice,
                 Status = i.Status,
                 PhotoUrl = i.PhotoUrl,
-            })
-            .ToList();
+            }).ToList();
+            return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>(result);
+        }
 
-        return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>(items);
+        // Fall back to request items if no shopper has accepted yet
+        var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));
+        if (order is null) return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>([]);
+
+        var request = _requests.FirstOrDefault(x => x.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase));
+        if (request is null) return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>([]);
+
+        var fallback = request.Items.Select((item, index) => new ActiveJobItemDto
+        {
+            Id = index,
+            Name = item.Name,
+            Unit = item.Unit,
+            Description = item.Description,
+            Quantity = item.Quantity,
+            EstimatedPrice = item.Price,
+            FoundPrice = null,
+            Status = OrderItemStatus.Pending,
+            PhotoUrl = null,
+        }).ToList();
+
+        return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>(fallback);
     }
 
     public Task<OrderTrackingDto?> GetOrderTrackingAsync(string orderId, CancellationToken cancellationToken)
