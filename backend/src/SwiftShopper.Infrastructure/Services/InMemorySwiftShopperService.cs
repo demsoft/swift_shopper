@@ -323,6 +323,27 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(request.CustomerId.Equals(customerId, StringComparison.OrdinalIgnoreCase));
     }
 
+    public Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(string orderId, CancellationToken cancellationToken)
+    {
+        var items = _orderItems
+            .Where(x => x.OrderId.Equals(orderId, StringComparison.OrdinalIgnoreCase))
+            .Select(i => new ActiveJobItemDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                Unit = i.Unit,
+                Description = i.Description,
+                Quantity = i.Quantity,
+                EstimatedPrice = i.EstimatedPrice,
+                FoundPrice = i.FoundPrice,
+                Status = i.Status,
+                PhotoUrl = i.PhotoUrl,
+            })
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<ActiveJobItemDto>>(items);
+    }
+
     public Task<OrderTrackingDto?> GetOrderTrackingAsync(string orderId, CancellationToken cancellationToken)
     {
         var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));
