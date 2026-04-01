@@ -127,20 +127,23 @@ class SwiftShopperRepository {
     return data.map((item) {
       final map = item as Map<String, dynamic>;
       final statusInt = map['status'] is int ? map['status'] as int : 0;
+      final itemsSubtotal = (map['itemsSubtotal'] as num? ?? 0).toDouble();
+      final estimatedItemsTotal = (map['estimatedItemsTotal'] as num? ?? 0).toDouble();
+      final deliveryFee = (map['deliveryFee'] as num? ?? 0).toDouble();
+      final serviceFee = (map['serviceFee'] as num? ?? 0).toDouble();
+      final baseItems = itemsSubtotal > 0 ? itemsSubtotal : estimatedItemsTotal;
       return ActiveOrder(
         orderId: map['id']?.toString() ?? '',
         title: map['storeName']?.toString() ?? 'Order',
         store: map['shopperName']?.toString() ?? 'Shopper Pending',
         status: _statusLabels[statusInt] ?? 'Pending',
         shopperName: map['shopperName']?.toString() ?? '',
-        total: (() {
-                final itemsSubtotal = (map['itemsSubtotal'] as num? ?? 0).toDouble();
-                final estimatedItemsTotal = (map['estimatedItemsTotal'] as num? ?? 0).toDouble();
-                final deliveryFee = (map['deliveryFee'] as num? ?? 0).toDouble();
-                final serviceFee = (map['serviceFee'] as num? ?? 0).toDouble();
-                final baseItems = itemsSubtotal > 0 ? itemsSubtotal : estimatedItemsTotal;
-                return baseItems + deliveryFee + serviceFee;
-              })(),
+        total: baseItems + deliveryFee + serviceFee,
+        deliveryFee: deliveryFee,
+        serviceFee: serviceFee,
+        estimatedItemsTotal: estimatedItemsTotal,
+        itemsSubtotal: itemsSubtotal,
+        storePhotoUrl: map['storePhotoUrl']?.toString(),
       );
     }).toList();
   }

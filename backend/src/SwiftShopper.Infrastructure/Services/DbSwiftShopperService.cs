@@ -193,6 +193,12 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Where(x => requestIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
+        var storeNames = orders.Select(x => x.StoreName).Where(n => !string.IsNullOrEmpty(n)).ToList();
+        var marketPhotos = await _dbContext.Markets.AsNoTracking()
+            .Where(x => storeNames.Contains(x.Name))
+            .Select(x => new { x.Name, x.PhotoUrl })
+            .ToListAsync(cancellationToken);
+
         return orders.Select(order =>
         {
             var orderItems = allOrderItems.Where(i => i.OrderId == order.Id).ToList();
@@ -228,6 +234,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 TotalItemsCount = totalItemsCount,
                 EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
                 UpdatedAt = order.UpdatedAt,
+                StorePhotoUrl = marketPhotos.FirstOrDefault(m => m.Name == order.StoreName)?.PhotoUrl,
             };
         }).ToList();
     }

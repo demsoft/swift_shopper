@@ -14,6 +14,11 @@ class ActiveOrder {
     required this.status,
     this.shopperName = '',
     this.total = 0,
+    this.deliveryFee = 0,
+    this.serviceFee = 0,
+    this.estimatedItemsTotal = 0,
+    this.itemsSubtotal = 0,
+    this.storePhotoUrl,
   });
 
   final String orderId;
@@ -22,6 +27,11 @@ class ActiveOrder {
   final String status;
   final String shopperName;
   final double total;
+  final double deliveryFee;
+  final double serviceFee;
+  final double estimatedItemsTotal;
+  final double itemsSubtotal;
+  final String? storePhotoUrl;
 }
 
 class RecentRequest {

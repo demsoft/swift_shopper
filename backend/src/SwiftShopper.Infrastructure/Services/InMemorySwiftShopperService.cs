@@ -338,6 +338,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
                     TotalItemsCount = totalItemsCount,
                     EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
                     UpdatedAt = order.UpdatedAt,
+                    StorePhotoUrl = _markets.FirstOrDefault(m => m.Name == order.StoreName)?.PhotoUrl,
                 };
             })
             .ToList();

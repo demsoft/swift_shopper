@@ -92,7 +92,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 16),
-                          _buildStoreImage(storeName, status),
+                          _buildStoreImage(storeName, status, order.storePhotoUrl),
                           const SizedBox(height: 16),
                           _buildStatusCard(
                             status: status,
@@ -202,7 +202,7 @@ class OrderDetailsScreen extends ConsumerWidget {
   }
 
   // ── STORE IMAGE ──────────────────────────────────────────────────────────
-  Widget _buildStoreImage(String storeName, String status) {
+  Widget _buildStoreImage(String storeName, String status, String? photoUrl) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -211,14 +211,21 @@ class OrderDetailsScreen extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Container(
-              color: const Color(0xFF2A3A28),
-              child: const Icon(
-                Icons.storefront_rounded,
-                color: Colors.white24,
-                size: 72,
-              ),
-            ),
+            photoUrl != null && photoUrl.isNotEmpty
+                ? Image.network(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFF2A3A28),
+                      child: const Icon(Icons.storefront_rounded,
+                          color: Colors.white24, size: 72),
+                    ),
+                  )
+                : Container(
+                    color: const Color(0xFF2A3A28),
+                    child: const Icon(Icons.storefront_rounded,
+                        color: Colors.white24, size: 72),
+                  ),
             // gradient overlay
             Positioned(
               bottom: 0,
@@ -565,8 +572,13 @@ class OrderDetailsScreen extends ConsumerWidget {
 
   // ── ORDER SUMMARY CARD ───────────────────────────────────────────────────
   Widget _buildOrderSummaryCard(ActiveOrder order) {
-    final total = order.total;
-    final hasTotal = total > 0;
+    final itemsSubtotal = order.itemsSubtotal;
+    final estimatedItemsTotal = order.estimatedItemsTotal;
+    final deliveryFee = order.deliveryFee;
+    final serviceFee = order.serviceFee;
+    final baseItems = itemsSubtotal > 0 ? itemsSubtotal : estimatedItemsTotal;
+    final grandTotal = baseItems + deliveryFee + serviceFee;
+    final isEstimate = itemsSubtotal == 0;
 
     return Container(
       width: double.infinity,
@@ -576,59 +588,55 @@ class OrderDetailsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'ESTIMATED ORDER TOTAL',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white70,
-              letterSpacing: 0.8,
-            ),
+          // Breakdown rows
+          _SummaryRow(
+            label: isEstimate ? 'Items (estimated)' : 'Items subtotal',
+            value: baseItems,
+            isEstimate: isEstimate,
           ),
-          const SizedBox(height: 6),
-          hasTotal
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text(
-                      '₦ ',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      total
-                          .toStringAsFixed(0)
-                          .replaceAllMapped(
-                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                            (m) => '${m[1]},',
-                          ),
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1,
-                      ),
-                    ),
-                  ],
-                )
-              : const Text(
-                  'Calculating...',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white70,
-                  ),
+          const SizedBox(height: 8),
+          _SummaryRow(label: 'Delivery fee', value: deliveryFee),
+          const SizedBox(height: 8),
+          _SummaryRow(label: 'Service fee', value: serviceFee),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(color: Colors.white24, height: 1),
+          ),
+          // Grand total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isEstimate ? 'ESTIMATED TOTAL' : 'TOTAL',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
+                  letterSpacing: 0.8,
                 ),
+              ),
+              Text(
+                grandTotal > 0
+                    ? '₦${_fmtAmt(grandTotal)}'
+                    : 'Calculating...',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  String _fmtAmt(double v) => v
+      .toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
   // ── GET HELP ─────────────────────────────────────────────────────────────
   Widget _buildGetHelp() {
@@ -658,6 +666,50 @@ class OrderDetailsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// SUMMARY ROW
+// ===========================================================================
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.isEstimate = false,
+  });
+
+  final String label;
+  final double value;
+  final bool isEstimate;
+
+  String _fmt(double v) => v
+      .toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value > 0 ? '${isEstimate ? '~' : ''}₦${_fmt(value)}' : '—',
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -744,47 +796,71 @@ class _OrderItemCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  '${item.quantity} × ${item.unit}'.trim(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isUnavailable
-                        ? const Color(0xFFB0B2AD)
-                        : const Color(0xFF9A9C97),
+                if (item.unit.isNotEmpty)
+                  Text(
+                    item.unit,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isUnavailable
+                          ? const Color(0xFFB0B2AD)
+                          : const Color(0xFF9A9C97),
+                    ),
                   ),
-                ),
                 if (item.description.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     item.description,
-                    style: const TextStyle(
-                        fontSize: 11, color: Color(0xFFB0B2AD)),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFB0B2AD)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                // qty × unit price
+                if (item.estimatedPrice > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.quantity > 1
+                        ? '${item.quantity} × ~₦${_fmt(item.estimatedPrice)}'
+                        : '~₦${_fmt(item.estimatedPrice)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isUnavailable
+                          ? const Color(0xFFB0B2AD)
+                          : const Color(0xFF9A9C97),
+                    ),
                   ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 10),
-          // price + status icon
+          // line total + status icon
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                item.foundPrice != null
-                    ? '₦${_fmt(item.foundPrice!)}'
-                    : item.estimatedPrice > 0
-                        ? '~₦${_fmt(item.estimatedPrice)}'
-                        : '',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: isUnavailable
-                      ? const Color(0xFFB0B2AD)
-                      : const Color(0xFF0D1512),
+              // show actual found price if available, else estimated line total
+              if (item.foundPrice != null)
+                Text(
+                  '₦${_fmt(item.foundPrice!)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isUnavailable
+                        ? const Color(0xFFB0B2AD)
+                        : const Color(0xFF0D1512),
+                  ),
+                )
+              else if (item.estimatedPrice > 0)
+                Text(
+                  '~₦${_fmt(item.estimatedPrice * item.quantity)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isUnavailable
+                        ? const Color(0xFFB0B2AD)
+                        : const Color(0xFF0D1512),
+                  ),
                 ),
-              ),
               const SizedBox(height: 6),
               if (isPicked)
                 const Icon(Icons.check_circle_rounded,
