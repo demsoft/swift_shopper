@@ -1,0 +1,3 @@
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Release/net8.0/publish/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Release/net8.0/publish/SwiftShopper.Domain.deps.json
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Release/net8.0/publish/SwiftShopper.Domain.pdb

@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "SwiftShopper.Application/1.0.0": {
+        "dependencies": {
+          "SwiftShopper.Domain": "1.0.0"
+        },
+        "runtime": {
+          "SwiftShopper.Application.dll": {}
+        }
+      },
+      "SwiftShopper.Domain/1.0.0": {
+        "runtime": {
+          "SwiftShopper.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SwiftShopper.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SwiftShopper.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

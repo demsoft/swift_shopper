@@ -1,0 +1,5 @@
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/publish/SwiftShopper.Application.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/publish/SwiftShopper.Application.deps.json
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/publish/SwiftShopper.Application.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/publish/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/publish/SwiftShopper.Domain.pdb

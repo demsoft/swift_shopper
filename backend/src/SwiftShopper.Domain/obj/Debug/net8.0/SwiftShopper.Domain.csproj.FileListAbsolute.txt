@@ -1,0 +1,12 @@
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Debug/net8.0/SwiftShopper.Domain.deps.json
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Debug/net8.0/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/bin/Debug/net8.0/SwiftShopper.Domain.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.AssemblyInfoInputs.cache
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.AssemblyInfo.cs
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.csproj.CoreCompileInputs.cache
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/refint/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/ref/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Domain/obj/Debug/net8.0/SwiftShopper.Domain.sourcelink.json

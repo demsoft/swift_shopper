@@ -1,0 +1,16 @@
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/SwiftShopper.Application.deps.json
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/SwiftShopper.Application.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/SwiftShopper.Application.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/SwiftShopper.Domain.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/bin/Release/net8.0/SwiftShopper.Domain.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.csproj.AssemblyReference.cache
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.AssemblyInfoInputs.cache
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.AssemblyInfo.cs
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.csproj.CoreCompileInputs.cache
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftSho.0B36C23D.Up2Date
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/refint/SwiftShopper.Application.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.pdb
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/ref/SwiftShopper.Application.dll
+/Users/mac/Desktop/swift_shopper/backend/src/SwiftShopper.Application/obj/Release/net8.0/SwiftShopper.Application.sourcelink.json
