@@ -19,7 +19,7 @@ public interface ISwiftShopperService
     Task<IReadOnlyList<ShoppingRequest>> GetRecentRequestsAsync(string customerId, CancellationToken cancellationToken);
 
     // ── Customer: Orders ──────────────────────────────────────────────────────
-    Task<IReadOnlyList<Order>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken);
     Task<bool> IsOrderOwnedByCustomerAsync(string orderId, string customerId, CancellationToken cancellationToken);
     Task<OrderTrackingDto?> GetOrderTrackingAsync(string orderId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(string orderId, CancellationToken cancellationToken);

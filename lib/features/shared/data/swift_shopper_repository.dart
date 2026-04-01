@@ -133,10 +133,14 @@ class SwiftShopperRepository {
         store: map['shopperName']?.toString() ?? 'Shopper Pending',
         status: _statusLabels[statusInt] ?? 'Pending',
         shopperName: map['shopperName']?.toString() ?? '',
-        total: ((map['itemsSubtotal'] as num? ?? 0) +
-                (map['deliveryFee'] as num? ?? 0) +
-                (map['serviceFee'] as num? ?? 0))
-            .toDouble(),
+        total: (() {
+                final itemsSubtotal = (map['itemsSubtotal'] as num? ?? 0).toDouble();
+                final estimatedItemsTotal = (map['estimatedItemsTotal'] as num? ?? 0).toDouble();
+                final deliveryFee = (map['deliveryFee'] as num? ?? 0).toDouble();
+                final serviceFee = (map['serviceFee'] as num? ?? 0).toDouble();
+                final baseItems = itemsSubtotal > 0 ? itemsSubtotal : estimatedItemsTotal;
+                return baseItems + deliveryFee + serviceFee;
+              })(),
       );
     }).toList();
   }

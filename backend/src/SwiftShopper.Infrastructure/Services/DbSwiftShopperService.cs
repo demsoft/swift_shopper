@@ -170,7 +170,7 @@ public class DbSwiftShopperService : ISwiftShopperService
 
     // ── Customer: Orders ──────────────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<Order>> GetActiveOrdersAsync(
+    public async Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(
         string customerId, CancellationToken cancellationToken)
     {
         var requestIds = await _dbContext.ShoppingRequests.AsNoTracking()
@@ -178,10 +178,38 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        return await _dbContext.Orders.AsNoTracking()
+        var orders = await _dbContext.Orders.AsNoTracking()
             .Where(x => requestIds.Contains(x.RequestId) && x.Status != OrderStatus.Delivered)
             .OrderByDescending(x => x.UpdatedAt)
             .ToListAsync(cancellationToken);
+
+        var orderIds = orders.Select(x => x.Id).ToList();
+        var allItems = await _dbContext.OrderItems.AsNoTracking()
+            .Where(x => orderIds.Contains(x.OrderId))
+            .ToListAsync(cancellationToken);
+
+        return orders.Select(order =>
+        {
+            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
+            var estimatedTotal = items.Sum(i => i.EstimatedPrice * i.Quantity);
+            return new ActiveOrderDto
+            {
+                Id = order.Id,
+                RequestId = order.RequestId,
+                ShopperName = order.ShopperName,
+                StoreName = order.StoreName,
+                StoreAddress = order.StoreAddress,
+                Status = order.Status,
+                ItemsSubtotal = order.ItemsSubtotal,
+                EstimatedItemsTotal = estimatedTotal,
+                DeliveryFee = order.DeliveryFee,
+                ServiceFee = order.ServiceFee,
+                PickedItemsCount = order.PickedItemsCount,
+                TotalItemsCount = items.Count,
+                EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
+                UpdatedAt = order.UpdatedAt,
+            };
+        }).ToList();
     }
 
     public async Task<bool> IsOrderOwnedByCustomerAsync(

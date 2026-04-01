@@ -294,19 +294,41 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult<IReadOnlyList<ShoppingRequest>>(requests);
     }
 
-    public Task<IReadOnlyList<Order>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken)
     {
         var requestIds = _requests
             .Where(x => x.CustomerId.Equals(customerId, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var activeOrders = _orders
+        var result = _orders
             .Where(x => requestIds.Contains(x.RequestId) && x.Status != OrderStatus.Delivered)
             .OrderByDescending(x => x.UpdatedAt)
+            .Select(order =>
+            {
+                var items = _orderItems.Where(i => i.OrderId == order.Id).ToList();
+                var estimatedTotal = items.Sum(i => i.EstimatedPrice * i.Quantity);
+                return new ActiveOrderDto
+                {
+                    Id = order.Id,
+                    RequestId = order.RequestId,
+                    ShopperName = order.ShopperName,
+                    StoreName = order.StoreName,
+                    StoreAddress = order.StoreAddress,
+                    Status = order.Status,
+                    ItemsSubtotal = order.ItemsSubtotal,
+                    EstimatedItemsTotal = estimatedTotal,
+                    DeliveryFee = order.DeliveryFee,
+                    ServiceFee = order.ServiceFee,
+                    PickedItemsCount = order.PickedItemsCount,
+                    TotalItemsCount = items.Count,
+                    EstimatedDeliveryMinutes = order.EstimatedDeliveryMinutes,
+                    UpdatedAt = order.UpdatedAt,
+                };
+            })
             .ToList();
 
-        return Task.FromResult<IReadOnlyList<Order>>(activeOrders);
+        return Task.FromResult<IReadOnlyList<ActiveOrderDto>>(result);
     }
 
     public Task<bool> IsOrderOwnedByCustomerAsync(
