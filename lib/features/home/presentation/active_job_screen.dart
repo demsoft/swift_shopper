@@ -10,7 +10,11 @@ import '../providers/home_provider.dart';
 // ACTIVE JOB SCREEN — loads real data from /api/orders/shopper/active-job
 // ===========================================================================
 class ActiveJobScreen extends ConsumerStatefulWidget {
-  const ActiveJobScreen({super.key});
+  const ActiveJobScreen({super.key, this.initialJob});
+
+  /// If provided (e.g. from the accept-request flow), shown immediately
+  /// without waiting for the network fetch.
+  final ActiveJobData? initialJob;
 
   @override
   ConsumerState<ActiveJobScreen> createState() => _ActiveJobScreenState();
@@ -20,54 +24,83 @@ class _ActiveJobScreenState extends ConsumerState<ActiveJobScreen> {
   @override
   void initState() {
     super.initState();
-    // Always do a fresh fetch when this screen is opened
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(activeJobProvider);
-    });
+    // Only refresh from API if we don't already have job data passed in
+    if (widget.initialJob == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.invalidate(activeJobProvider);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final initialJob = widget.initialJob;
     final jobAsync = ref.watch(activeJobProvider);
+
+    // Resolve which job to show:
+    // 1. If provider has real data, always prefer it.
+    // 2. If provider is loading or returned null, fall back to initialJob.
+    ActiveJobData? resolvedJob;
+    bool isLoading = false;
+    Object? error;
+
+    if (jobAsync is AsyncData<ActiveJobData?>) {
+      resolvedJob = jobAsync.value ?? initialJob;
+    } else if (jobAsync is AsyncError<ActiveJobData?>) {
+      if (initialJob != null) {
+        resolvedJob = initialJob;
+      } else {
+        error = (jobAsync as AsyncError).error;
+      }
+    } else {
+      // AsyncLoading
+      if (initialJob != null) {
+        resolvedJob = initialJob;
+      } else {
+        isLoading = true;
+      }
+    }
+
+    Widget body;
+    if (isLoading) {
+      body = const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    } else if (error != null) {
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildBackHeader(context),
+              const SizedBox(height: 40),
+              const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
+              const SizedBox(height: 16),
+              Text(
+                'Could not load job.\n$error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => ref.invalidate(activeJobProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (resolvedJob == null) {
+      body = const _NoActiveJobView();
+    } else {
+      body = _ActiveJobView(job: resolvedJob);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F1),
       body: SafeArea(
-        child: jobAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          ),
-          error: (e, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildBackHeader(context),
-                  const SizedBox(height: 40),
-                  const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Could not load job.\n$e',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => ref.invalidate(activeJobProvider),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          data: (job) {
-            if (job == null) {
-              return const _NoActiveJobView();
-            }
-            return _ActiveJobView(job: job);
-          },
-        ),
+        child: body,
       ),
     );
   }
@@ -224,9 +257,11 @@ class _ActiveJobView extends StatelessWidget {
             ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
@@ -246,21 +281,20 @@ class _ActiveJobView extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                  ),
-                  child: const Text(
-                    'FINISH SHOPPING',
-                    style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w800,
-                      color: Colors.white, letterSpacing: 0.3,
-                    ),
+              ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  minimumSize: const Size(0, 50),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                ),
+                child: const Text(
+                  'FINISH SHOPPING',
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w800,
+                    color: Colors.white, letterSpacing: 0.3,
                   ),
                 ),
               ),
@@ -272,13 +306,26 @@ class _ActiveJobView extends StatelessWidget {
   }
 }
 
-class _StoreCard extends StatelessWidget {
+class _StoreCard extends ConsumerWidget {
   const _StoreCard({required this.storeName, required this.storeAddress});
   final String storeName;
   final String storeAddress;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Resolve photo from markets providers
+    String? photoUrl;
+    void resolve(List<MarketData> markets) {
+      for (final m in markets) {
+        if (m.name.toLowerCase() == storeName.toLowerCase() && m.photoUrl != null) {
+          photoUrl = m.photoUrl;
+          return;
+        }
+      }
+    }
+    ref.watch(supermarketsProvider).whenData(resolve);
+    if (photoUrl == null) ref.watch(openMarketsProvider).whenData(resolve);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -299,14 +346,41 @@ class _StoreCard extends StatelessWidget {
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
-            child: Container(
+            child: SizedBox(
               width: double.infinity,
               height: 160,
-              color: const Color(0xFF2A3A28),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  const Center(
-                    child: Icon(Icons.storefront_rounded, color: Colors.white38, size: 56),
+                  if (photoUrl != null)
+                    Image.network(
+                      photoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFF2A3A28),
+                        child: const Center(
+                          child: Icon(Icons.storefront_rounded, color: Colors.white38, size: 56),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      color: const Color(0xFF2A3A28),
+                      child: const Center(
+                        child: Icon(Icons.storefront_rounded, color: Colors.white38, size: 56),
+                      ),
+                    ),
+                  // Gradient overlay so the badge is readable
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.45)],
+                        ),
+                      ),
+                    ),
                   ),
                   Positioned(
                     bottom: 12,

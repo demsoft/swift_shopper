@@ -24,7 +24,7 @@ class _RequestDetailScreenState
   Future<void> _accept() async {
     setState(() => _accepting = true);
     try {
-      await ref.read(swiftShopperRepositoryProvider).acceptRequest(
+      final job = await ref.read(swiftShopperRepositoryProvider).acceptRequest(
             requestId: widget.request.requestId,
             storeName: widget.request.preferredStore,
             storeAddress: widget.request.deliveryAddress,
@@ -39,7 +39,9 @@ class _RequestDetailScreenState
           ),
         );
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const ActiveJobScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) => ActiveJobScreen(initialJob: job),
+          ),
           (route) => route.isFirst,
         );
       }

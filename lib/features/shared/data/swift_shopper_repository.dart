@@ -166,15 +166,50 @@ class SwiftShopperRepository {
     }).toList();
   }
 
-  Future<void> acceptRequest({
+  Future<ActiveJobData?> acceptRequest({
     required String requestId,
     required String storeName,
     required String storeAddress,
   }) async {
-    await apiClient.post('/api/requests/$requestId/accept', {
+    final data = await apiClient.post('/api/requests/$requestId/accept', {
       'storeName': storeName,
       'storeAddress': storeAddress,
     });
+
+    if (data == null || data is! Map<String, dynamic>) return null;
+
+    final rawItems = data['items'] as List? ?? [];
+    final items = rawItems.map((i) {
+      final m = i as Map<String, dynamic>;
+      return ActiveJobItem(
+        id: (m['id'] as num? ?? 0).toInt(),
+        name: m['name']?.toString() ?? '',
+        unit: m['unit']?.toString() ?? '',
+        description: m['description']?.toString() ?? '',
+        quantity: (m['quantity'] as num? ?? 1).toInt(),
+        estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
+        foundPrice: m['foundPrice'] != null
+            ? (m['foundPrice'] as num).toDouble()
+            : null,
+        status: (m['status'] as num? ?? 0).toInt(),
+        photoUrl: m['photoUrl']?.toString(),
+      );
+    }).toList();
+
+    return ActiveJobData(
+      orderId: data['orderId']?.toString() ?? '',
+      requestId: data['requestId']?.toString() ?? '',
+      storeName: data['storeName']?.toString() ?? '',
+      storeAddress: data['storeAddress']?.toString() ?? '',
+      customerName: data['customerName']?.toString() ?? '',
+      deliveryAddress: data['deliveryAddress']?.toString() ?? '',
+      deliveryNotes: data['deliveryNotes']?.toString() ?? '',
+      status: (data['status'] as num? ?? 0).toInt(),
+      pickedItemsCount: (data['pickedItemsCount'] as num? ?? 0).toInt(),
+      totalItemsCount: (data['totalItemsCount'] as num? ?? 0).toInt(),
+      estimatedTotal: (data['estimatedTotal'] as num? ?? 0).toDouble(),
+      items: items,
+    );
   }
 
   Future<List<AvailableRequestData>> getAvailableRequests() async {

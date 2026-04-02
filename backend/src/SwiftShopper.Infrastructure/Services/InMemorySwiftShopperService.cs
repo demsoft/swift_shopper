@@ -551,7 +551,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
 
         _orderItems.AddRange(newItems);
 
-        return Task.FromResult(BuildActiveJobDto(order, request, newItems));
+        return Task.FromResult(BuildActiveJobDto(order, request, dto.ShopperId, newItems));
     }
 
     public Task<ActiveJobDto?> GetActiveJobAsync(string shopperId, CancellationToken cancellationToken)
@@ -570,7 +570,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         var request = _requests.FirstOrDefault(r => r.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase));
         var items = _orderItems.Where(i => i.OrderId.Equals(order.Id, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        return Task.FromResult<ActiveJobDto?>(BuildActiveJobDto(order, request, items));
+        return Task.FromResult<ActiveJobDto?>(BuildActiveJobDto(order, request, request?.CustomerId ?? string.Empty, items));
     }
 
     public Task<ActiveJobItemDto> UpdateOrderItemAsync(
@@ -1214,7 +1214,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         _ => ("Unknown", 0)
     };
 
-    private static ActiveJobDto BuildActiveJobDto(Order order, ShoppingRequest? request, List<OrderItem> items)
+    private static ActiveJobDto BuildActiveJobDto(Order order, ShoppingRequest? request, string customerName, List<OrderItem> items)
     {
         return new ActiveJobDto
         {
@@ -1222,7 +1222,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
             RequestId = order.RequestId,
             StoreName = order.StoreName,
             StoreAddress = order.StoreAddress,
-            CustomerName = "Customer",
+            CustomerName = customerName,
             DeliveryAddress = request?.DeliveryAddress ?? string.Empty,
             DeliveryNotes = request?.DeliveryNotes ?? string.Empty,
             Status = order.Status,

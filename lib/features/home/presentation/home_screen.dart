@@ -1111,7 +1111,7 @@ class _ActiveShoppingSection extends ConsumerWidget {
             GestureDetector(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => const ActiveJobScreen(),
+                  builder: (_) => ActiveJobScreen(initialJob: job),
                 ),
               ),
               child: Container(
@@ -1196,7 +1196,7 @@ class _ActiveShoppingSection extends ConsumerWidget {
                     child: FilledButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const ActiveJobScreen(),
+                          builder: (_) => ActiveJobScreen(initialJob: job),
                         ),
                       ),
                       style: FilledButton.styleFrom(

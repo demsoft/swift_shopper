@@ -418,6 +418,9 @@ public class DbSwiftShopperService : ISwiftShopperService
         order.EstimatedDeliveryMinutes = 45;
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
+        var customer = await _dbContext.UserAccounts.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.CustomerId, cancellationToken);
+
         var orderItems = request.Items.Select(item => new OrderItem
         {
             OrderId = order.Id,
@@ -432,7 +435,7 @@ public class DbSwiftShopperService : ISwiftShopperService
 
         await _dbContext.OrderItems.AddRangeAsync(orderItems, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return BuildActiveJobDto(order, request, shopper.FullName, orderItems);
+        return BuildActiveJobDto(order, request, shopper.FullName, customer?.FullName ?? string.Empty, orderItems);
     }
 
     public async Task<ActiveJobDto?> GetActiveJobAsync(
@@ -451,11 +454,16 @@ public class DbSwiftShopperService : ISwiftShopperService
         var request = await _dbContext.ShoppingRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == order.RequestId, cancellationToken);
 
+        var customer = request is not null
+            ? await _dbContext.UserAccounts.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == request.CustomerId, cancellationToken)
+            : null;
+
         var items = await _dbContext.OrderItems.AsNoTracking()
             .Where(x => x.OrderId == order.Id)
             .ToListAsync(cancellationToken);
 
-        return BuildActiveJobDto(order, request, order.ShopperName, items);
+        return BuildActiveJobDto(order, request, order.ShopperName, customer?.FullName ?? string.Empty, items);
     }
 
     public async Task<ActiveJobItemDto> UpdateOrderItemAsync(
@@ -638,7 +646,7 @@ public class DbSwiftShopperService : ISwiftShopperService
     }
 
     private static ActiveJobDto BuildActiveJobDto(
-        Order order, ShoppingRequest? request, string shopperName, IReadOnlyList<OrderItem> items)
+        Order order, ShoppingRequest? request, string shopperName, string customerName, IReadOnlyList<OrderItem> items)
     {
         return new ActiveJobDto
         {
@@ -646,7 +654,7 @@ public class DbSwiftShopperService : ISwiftShopperService
             RequestId = order.RequestId,
             StoreName = order.StoreName,
             StoreAddress = order.StoreAddress,
-            CustomerName = request?.CustomerId ?? string.Empty,
+            CustomerName = customerName,
             DeliveryAddress = request?.DeliveryAddress ?? string.Empty,
             DeliveryNotes = request?.DeliveryNotes ?? string.Empty,
             Status = order.Status,
