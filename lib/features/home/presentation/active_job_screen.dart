@@ -200,7 +200,7 @@ class _ActiveJobView extends StatelessWidget {
                 _StoreCard(storeName: job.storeName, storeAddress: job.storeAddress),
                 const SizedBox(height: 12),
                 // Customer row
-                _CustomerRow(customerName: job.customerName, deliveryAddress: job.deliveryAddress, orderId: job.orderId),
+                _CustomerRow(customerName: job.customerName, customerAvatarUrl: job.customerAvatarUrl, deliveryAddress: job.deliveryAddress, orderId: job.orderId),
                 const SizedBox(height: 24),
                 // Shopping list header
                 Row(
@@ -222,10 +222,10 @@ class _ActiveJobView extends StatelessWidget {
                 const SizedBox(height: 10),
                 // Progress bar
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
                     value: progress,
-                    minHeight: 7,
+                    minHeight: 10,
                     backgroundColor: const Color(0xFFD9DDD7),
                     valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                   ),
@@ -245,7 +245,7 @@ class _ActiveJobView extends StatelessWidget {
         ),
         // Bottom bar
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
@@ -256,45 +256,46 @@ class _ActiveJobView extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'EST. TOTAL',
-                      style: TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary, letterSpacing: 0.8,
-                      ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'ESTIMATED TOTAL',
+                    style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary, letterSpacing: 0.6,
                     ),
-                    Text(
-                      '₦ ${_fmt(job.estimatedTotal)}',
-                      style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w900,
-                        color: Color(0xFF0D1512),
-                      ),
+                  ),
+                  Text(
+                    '₦${_fmt(job.estimatedTotal)}',
+                    style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w900,
+                      color: Color(0xFF0D1512),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  minimumSize: const Size(0, 50),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                ),
-                child: const Text(
-                  'FINISH SHOPPING',
-                  style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w800,
-                    color: Colors.white, letterSpacing: 0.3,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                  label: const Text(
+                    'Finish Shopping',
+                    style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -437,11 +438,33 @@ class _StoreCard extends ConsumerWidget {
   }
 }
 
-class _CustomerRow extends StatelessWidget {
-  const _CustomerRow({required this.customerName, required this.deliveryAddress, required this.orderId});
+class _CustomerRow extends StatefulWidget {
+  const _CustomerRow({required this.customerName, this.customerAvatarUrl, required this.deliveryAddress, required this.orderId});
   final String customerName;
+  final String? customerAvatarUrl;
   final String deliveryAddress;
   final String orderId;
+
+  @override
+  State<_CustomerRow> createState() => _CustomerRowState();
+}
+
+class _CustomerRowState extends State<_CustomerRow> {
+  late final DateTime _startTime;
+  late final Stream<Duration> _elapsed;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTime = DateTime.now();
+    _elapsed = Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now().difference(_startTime));
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -456,10 +479,15 @@ class _CustomerRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 40, height: 40,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE8EAE7)),
-            child: const Icon(Icons.person_outline_rounded, color: Color(0xFF9A9C97), size: 22),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFFE8EAE7),
+            backgroundImage: widget.customerAvatarUrl != null
+                ? NetworkImage(widget.customerAvatarUrl!)
+                : null,
+            child: widget.customerAvatarUrl == null
+                ? const Icon(Icons.person_outline_rounded, color: Color(0xFF9A9C97), size: 22)
+                : null,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -467,13 +495,13 @@ class _CustomerRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  customerName.isEmpty ? 'Customer' : customerName,
+                  widget.customerName.isEmpty ? 'Customer' : widget.customerName,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0D1512)),
                 ),
-                if (deliveryAddress.isNotEmpty) ...[
+                if (widget.deliveryAddress.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    deliveryAddress,
+                    widget.deliveryAddress,
                     style: const TextStyle(fontSize: 12, color: Color(0xFF9A9C97)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -482,16 +510,35 @@ class _CustomerRow extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => ChatScreen(shopperName: customerName, shopperRole: 'CUSTOMER'),
+                builder: (_) => ChatScreen(shopperName: widget.customerName, shopperRole: 'CUSTOMER'),
               ),
             ),
             child: Container(
               width: 38, height: 38,
               decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
               child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+            ),
+          ),
+          const SizedBox(width: 10),
+          StreamBuilder<Duration>(
+            stream: _elapsed,
+            initialData: Duration.zero,
+            builder: (context, snap) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
+                const SizedBox(width: 3),
+                Text(
+                  _fmt(snap.data ?? Duration.zero),
+                  style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -508,14 +555,33 @@ class _JobItemCard extends StatelessWidget {
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
+  String get _description {
+    final parts = <String>[];
+    if (item.description.isNotEmpty) parts.add(item.description);
+    if (item.unit.isNotEmpty) parts.add('${item.quantity} ${item.unit}');
+    return parts.join(' • ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final isFound = item.status == 1;
     final isUnavailable = item.status == 2;
-    final displayPrice = item.foundPrice ?? item.estimatedPrice;
+    final isPending = !isFound && !isUnavailable;
+
+    final borderColor = isFound
+        ? AppColors.primary
+        : isUnavailable
+            ? const Color(0xFFE53935)
+            : Colors.transparent;
+
+    final displayPrice = isFound
+        ? (item.foundPrice ?? item.estimatedPrice)
+        : item.estimatedPrice;
+
+    final priceLabel = isFound ? 'FOUND PRICE' : isPending ? 'ACTUAL PRICE' : 'EST. PRICE';
+    final priceLabelColor = isFound ? AppColors.primary : const Color(0xFF9A9C97);
 
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -523,107 +589,238 @@ class _JobItemCard extends StatelessWidget {
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
-      child: Row(
-        children: [
-          // Status icon / image
-          Stack(
-            clipBehavior: Clip.none,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              item.photoUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        item.photoUrl!,
-                        width: 58, height: 58,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _itemIconBox(isFound, isUnavailable),
-                      ),
-                    )
-                  : _itemIconBox(isFound, isUnavailable),
-              if (item.quantity > 1)
-                Positioned(
-                  top: -6, left: -6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${item.quantity}x',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+              // Coloured left accent bar
+              if (isFound || isUnavailable)
+                Container(width: 4, color: borderColor),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(isFound || isUnavailable ? 10 : 14, 14, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Top row: status icon + name/desc + price ──────────────────
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0D1512)),
+                // Status indicator
+                _StatusCircle(isFound: isFound, isUnavailable: isUnavailable),
+                const SizedBox(width: 12),
+                // Name + tags
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0D1512),
+                        ),
+                      ),
+                      if (isUnavailable) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'UNAVAILABLE',
+                            style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w800,
+                              color: Color(0xFFE53935), letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        _description,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF9A9C97)),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  item.unit.isNotEmpty ? item.unit : item.description,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF9A9C97)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 10),
+                // Price column
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '₦',
+                          style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700,
+                            color: isFound ? const Color(0xFF0D1512) : const Color(0xFF0D1512),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          _fmt(displayPrice),
+                          style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0D1512),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      priceLabel,
+                      style: TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w700,
+                        color: priceLabelColor, letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '₦ ${_fmt(displayPrice)}',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0D1512)),
+
+            // ── Bottom row: photo + action button ─────────────────────────
+            if (isFound) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // Thumbnail
+                  if (item.photoUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        item.photoUrl!,
+                        width: 44, height: 44,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _photoPlaceholder(),
+                      ),
+                    )
+                  else
+                    _photoPlaceholder(),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.camera_alt_outlined, size: 15),
+                    label: const Text('Retake Photo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0D1512),
+                      side: const BorderSide(color: Color(0xFFD0D3CF)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              _statusBadge(isFound, isUnavailable),
+            ] else if (isUnavailable) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                  label: const Text(
+                    'SUGGEST REPLACEMENT',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0D1512),
+                    side: const BorderSide(color: Color(0xFFD0D3CF)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 16, color: AppColors.primary),
+                  label: const Text(
+                    'SCAN ITEM',
+                    style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: AppColors.primary, letterSpacing: 0.4,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _itemIconBox(bool isFound, bool isUnavailable) {
+  Widget _photoPlaceholder() {
     return Container(
-      width: 58, height: 58,
+      width: 44, height: 44,
       decoration: BoxDecoration(
-        color: isFound
-            ? const Color(0xFFE6F4EA)
-            : isUnavailable
-                ? const Color(0xFFFDECEC)
-                : const Color(0xFFF0F0EE),
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFFF0F0EE),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(
-        isFound ? Icons.check_rounded : isUnavailable ? Icons.close_rounded : Icons.hourglass_empty_rounded,
-        color: isFound ? AppColors.primary : isUnavailable ? AppColors.danger : AppColors.textSecondary,
-        size: 26,
-      ),
+      child: const Icon(Icons.image_outlined, color: Color(0xFF9A9C97), size: 22),
     );
   }
+}
 
-  Widget _statusBadge(bool isFound, bool isUnavailable) {
-    final label = isFound ? 'FOUND' : isUnavailable ? 'N/A' : 'PENDING';
-    final color = isFound ? AppColors.primary : isUnavailable ? AppColors.danger : AppColors.textSecondary;
+class _StatusCircle extends StatelessWidget {
+  const _StatusCircle({required this.isFound, required this.isUnavailable});
+  final bool isFound;
+  final bool isUnavailable;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isFound) {
+      return Container(
+        width: 28, height: 28,
+        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+        child: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+      );
+    }
+    if (isUnavailable) {
+      return Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE53935), width: 2),
+        ),
+        child: const Icon(Icons.block_rounded, color: Color(0xFFE53935), size: 16),
+      );
+    }
+    // Pending
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      width: 28, height: 28,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.3),
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFD0D3CF), width: 2),
       ),
     );
   }

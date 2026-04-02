@@ -55,6 +55,7 @@ class ActiveJobData {
     required this.storeName,
     required this.storeAddress,
     required this.customerName,
+    this.customerAvatarUrl,
     required this.deliveryAddress,
     required this.deliveryNotes,
     required this.status,
@@ -69,6 +70,7 @@ class ActiveJobData {
   final String storeName;
   final String storeAddress;
   final String customerName;
+  final String? customerAvatarUrl;
   final String deliveryAddress;
   final String deliveryNotes;
   final int status;

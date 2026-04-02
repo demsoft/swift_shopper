@@ -435,7 +435,7 @@ public class DbSwiftShopperService : ISwiftShopperService
 
         await _dbContext.OrderItems.AddRangeAsync(orderItems, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return BuildActiveJobDto(order, request, shopper.FullName, customer?.FullName ?? string.Empty, orderItems);
+        return BuildActiveJobDto(order, request, shopper.FullName, customer?.FullName ?? string.Empty, customer?.AvatarUrl, orderItems);
     }
 
     public async Task<ActiveJobDto?> GetActiveJobAsync(
@@ -463,7 +463,7 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Where(x => x.OrderId == order.Id)
             .ToListAsync(cancellationToken);
 
-        return BuildActiveJobDto(order, request, order.ShopperName, customer?.FullName ?? string.Empty, items);
+        return BuildActiveJobDto(order, request, order.ShopperName, customer?.FullName ?? string.Empty, customer?.AvatarUrl, items);
     }
 
     public async Task<ActiveJobItemDto> UpdateOrderItemAsync(
@@ -646,7 +646,7 @@ public class DbSwiftShopperService : ISwiftShopperService
     }
 
     private static ActiveJobDto BuildActiveJobDto(
-        Order order, ShoppingRequest? request, string shopperName, string customerName, IReadOnlyList<OrderItem> items)
+        Order order, ShoppingRequest? request, string shopperName, string customerName, string? customerAvatarUrl, IReadOnlyList<OrderItem> items)
     {
         return new ActiveJobDto
         {
@@ -655,6 +655,7 @@ public class DbSwiftShopperService : ISwiftShopperService
             StoreName = order.StoreName,
             StoreAddress = order.StoreAddress,
             CustomerName = customerName,
+            CustomerAvatarUrl = customerAvatarUrl,
             DeliveryAddress = request?.DeliveryAddress ?? string.Empty,
             DeliveryNotes = request?.DeliveryNotes ?? string.Empty,
             Status = order.Status,

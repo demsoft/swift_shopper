@@ -15,6 +15,8 @@ public class ActiveJobDto
 
     public required string CustomerName { get; init; }
 
+    public string? CustomerAvatarUrl { get; init; }
+
     public required string DeliveryAddress { get; init; }
 
     public string DeliveryNotes { get; init; } = string.Empty;

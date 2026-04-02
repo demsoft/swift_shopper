@@ -1223,6 +1223,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
             StoreName = order.StoreName,
             StoreAddress = order.StoreAddress,
             CustomerName = customerName,
+            CustomerAvatarUrl = null,
             DeliveryAddress = request?.DeliveryAddress ?? string.Empty,
             DeliveryNotes = request?.DeliveryNotes ?? string.Empty,
             Status = order.Status,
