@@ -263,7 +263,14 @@ public class DbSwiftShopperService : ISwiftShopperService
         var totalItems = await _dbContext.OrderItems.AsNoTracking()
             .CountAsync(x => x.OrderId == orderId, cancellationToken);
 
-        return BuildTrackingDto(order, totalItems);
+        var shopperAvatarUrl = order.ShopperId is not null
+            ? await _dbContext.UserAccounts.AsNoTracking()
+                .Where(x => x.Id == order.ShopperId)
+                .Select(x => x.AvatarUrl)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        return BuildTrackingDto(order, totalItems, shopperAvatarUrl);
     }
 
     public async Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(
@@ -606,7 +613,7 @@ public class DbSwiftShopperService : ISwiftShopperService
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private static OrderTrackingDto BuildTrackingDto(Order order, int totalItems)
+    private static OrderTrackingDto BuildTrackingDto(Order order, int totalItems, string? shopperAvatarUrl = null)
     {
         var (stepLabel, stepNumber) = order.Status switch
         {
@@ -627,6 +634,7 @@ public class DbSwiftShopperService : ISwiftShopperService
             OrderId = order.Id,
             RequestId = order.RequestId,
             ShopperName = order.ShopperName,
+            ShopperAvatarUrl = shopperAvatarUrl,
             StoreName = order.StoreName,
             StoreAddress = order.StoreAddress,
             CurrentStatus = order.Status,

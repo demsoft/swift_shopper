@@ -182,6 +182,7 @@ class OrderTrackingData {
   const OrderTrackingData({
     required this.orderId,
     required this.shopperName,
+    this.shopperAvatarUrl,
     required this.storeName,
     required this.currentStatus,
     required this.stepLabel,
@@ -193,6 +194,7 @@ class OrderTrackingData {
 
   final String orderId;
   final String shopperName;
+  final String? shopperAvatarUrl;
   final String storeName;
   final String currentStatus;
   final String stepLabel;

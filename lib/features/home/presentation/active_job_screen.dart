@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../chat/presentation/chat_screen.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
+import 'scan_item_sheet.dart';
 
 // ===========================================================================
 // ACTIVE JOB SCREEN — loads real data from /api/orders/shopper/active-job
@@ -235,7 +236,7 @@ class _ActiveJobView extends StatelessWidget {
                 ...job.items.map(
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: _JobItemCard(item: item),
+                    child: _JobItemCard(orderId: job.orderId, item: item),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -547,8 +548,9 @@ class _CustomerRowState extends State<_CustomerRow> {
   }
 }
 
-class _JobItemCard extends StatelessWidget {
-  const _JobItemCard({required this.item});
+class _JobItemCard extends ConsumerWidget {
+  const _JobItemCard({required this.orderId, required this.item});
+  final String orderId;
   final ActiveJobItem item;
 
   String _fmt(double v) => v
@@ -563,7 +565,7 @@ class _JobItemCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isFound = item.status == 1;
     final isUnavailable = item.status == 2;
     final isPending = !isFound && !isUnavailable;
@@ -708,7 +710,10 @@ class _JobItemCard extends StatelessWidget {
                     _photoPlaceholder(),
                   const SizedBox(width: 10),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => showScanItemSheet(
+                      context: context, ref: ref,
+                      orderId: orderId, item: item,
+                    ),
                     icon: const Icon(Icons.camera_alt_outlined, size: 15),
                     label: const Text('Retake Photo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
@@ -727,7 +732,10 @@ class _JobItemCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => showScanItemSheet(
+                    context: context, ref: ref,
+                    orderId: orderId, item: item,
+                  ),
                   icon: const Icon(Icons.swap_horiz_rounded, size: 16),
                   label: const Text(
                     'SUGGEST REPLACEMENT',
@@ -747,7 +755,10 @@ class _JobItemCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => showScanItemSheet(
+                    context: context, ref: ref,
+                    orderId: orderId, item: item,
+                  ),
                   icon: const Icon(Icons.qr_code_scanner_rounded, size: 16, color: AppColors.primary),
                   label: const Text(
                     'SCAN ITEM',

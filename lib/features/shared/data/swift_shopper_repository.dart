@@ -271,6 +271,7 @@ class SwiftShopperRepository {
     return OrderTrackingData(
       orderId: orderId,
       shopperName: data['shopperName']?.toString() ?? 'Shopper',
+      shopperAvatarUrl: data['shopperAvatarUrl']?.toString(),
       storeName: data['storeName']?.toString() ?? '',
       currentStatus: _statusLabels[statusInt] ?? 'Shopping',
       stepLabel: data['stepLabel']?.toString() ?? '',
@@ -353,6 +354,42 @@ class SwiftShopperRepository {
   }
 
   // ── Shopper: Active Job ────────────────────────────────────────────────────
+
+  /// PATCH /api/orders/{orderId}/items/{itemId}
+  /// status: 0=Pending, 1=Found, 2=Unavailable
+  Future<void> updateOrderItem({
+    required String orderId,
+    required int itemId,
+    required int status,
+    double? foundPrice,
+    String? photoUrl,
+  }) async {
+    await apiClient.patch('/api/orders/$orderId/items/$itemId', {
+      'status': status,
+      // Send as num to avoid .0 suffix that some .NET parsers reject for decimal
+      if (foundPrice != null)
+        'foundPrice': foundPrice == foundPrice.truncateToDouble()
+            ? foundPrice.toInt()
+            : foundPrice,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    });
+  }
+
+  Future<String?> uploadItemPhoto({
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    final data = await apiClient.postFile(
+      path: '/api/upload/image',
+      bytes: bytes,
+      fileName: fileName,
+      contentType: 'image/jpeg',
+    );
+    if (data is Map<String, dynamic>) {
+      return data['url']?.toString() ?? data['imageUrl']?.toString();
+    }
+    return null;
+  }
 
   Future<ActiveJobData?> getActiveJob() async {
     final data = await apiClient.get('/api/orders/shopper/active-job');

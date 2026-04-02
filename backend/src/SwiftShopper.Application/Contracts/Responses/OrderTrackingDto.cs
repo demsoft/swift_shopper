@@ -10,6 +10,8 @@ public class OrderTrackingDto
 
     public required string ShopperName { get; init; }
 
+    public string? ShopperAvatarUrl { get; init; }
+
     public string StoreName { get; init; } = string.Empty;
 
     public string StoreAddress { get; init; } = string.Empty;

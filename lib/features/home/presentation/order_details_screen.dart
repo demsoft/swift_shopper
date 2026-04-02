@@ -120,7 +120,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 14),
                           if (shopperName.isNotEmpty)
-                            _buildShopperCard(context, shopperName),
+                            _buildShopperCard(context, shopperName, tracking?.shopperAvatarUrl),
                           const SizedBox(height: 24),
                           _buildItemsSection(ref, order.orderId),
                           const SizedBox(height: 16),
@@ -426,7 +426,7 @@ class OrderDetailsScreen extends ConsumerWidget {
   }
 
   // ── SHOPPER CARD ─────────────────────────────────────────────────────────
-  Widget _buildShopperCard(BuildContext context, String shopperName) {
+  Widget _buildShopperCard(BuildContext context, String shopperName, String? shopperAvatarUrl) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
@@ -442,14 +442,15 @@ class OrderDetailsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFE8A060),
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 28),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: const Color(0xFFE8A060),
+            backgroundImage: shopperAvatarUrl != null && shopperAvatarUrl.isNotEmpty
+                ? NetworkImage(shopperAvatarUrl)
+                : null,
+            child: shopperAvatarUrl == null || shopperAvatarUrl.isEmpty
+                ? const Icon(Icons.person, color: Colors.white, size: 28)
+                : null,
           ),
           const SizedBox(width: 14),
           Expanded(

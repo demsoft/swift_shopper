@@ -147,6 +147,10 @@ public static class OrdersEndpoints
             {
                 return Results.NotFound();
             }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(ex.Message);
+            }
         });
 
         // POST /api/orders/{orderId}/finish — shopper finishes shopping

@@ -21,28 +21,28 @@ class _Slide {
 
 const _slides = [
   _Slide(
-    image: 'assets/images/screen2.png',
+    image: 'assets/images/c1.png',
     badge: '🛍  TRUSTED FIRST',
     title: 'Shop smarter with trusted local shoppers',
     subtitle:
         'Post your list once and get real-time updates until delivery reaches your door.',
   ),
   _Slide(
-    image: 'assets/images/screen4.png',
+    image: 'assets/images/c2.png',
     badge: '📊  LIVE TRACKING',
     title: 'Track every order at a glance',
     subtitle:
         'See status, approvals, and updates in one clean timeline while shopping is in progress.',
   ),
   _Slide(
-    image: 'assets/images/screen1.png',
+    image: 'assets/images/c4.png',
     badge: '₦  BARGAIN LIVE',
     title: 'Real-Time Negotiation',
     subtitle:
         'Bargain like you\'re there. Chat directly with your shoppers in real-time to negotiate prices and get the absolute best value for your money at any local market.',
   ),
   _Slide(
-    image: 'assets/images/screen.png',
+    image: 'assets/images/c5.png',
     badge: '✅  EASY RECEIVE',
     title: 'Chat, approve, and receive confidently',
     subtitle:

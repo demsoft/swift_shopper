@@ -36,6 +36,45 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    final encodedBody = jsonEncode(body);
+    final response = await _sendWithAndroidFallback(
+      path: path,
+      send: (uri) => client.patch(uri, headers: _headers, body: encodedBody),
+    );
+
+    return _decode(response);
+  }
+
+  Future<dynamic> postFile({
+    required String path,
+    required List<int> bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    final baseUrl = AppEnv.apiBaseUrl;
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('POST', uri);
+
+    final token = _authToken;
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType.parse(contentType),
+      ),
+    );
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+    return _decode(response);
+  }
+
   Future<dynamic> uploadFile({
     required String path,
     required List<int> bytes,
