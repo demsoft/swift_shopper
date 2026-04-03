@@ -23,18 +23,26 @@ final quickActionsProvider = Provider<List<QuickAction>>((ref) {
 final activeOrdersProvider = FutureProvider<List<ActiveOrder>>((ref) async {
   final repository = ref.read(swiftShopperRepositoryProvider);
   final authUser = ref.read(authProvider).user;
-  final userId = authUser == null || authUser.isShopper ? null : authUser.userId;
-  return repository.getActiveOrders(customerId: userId);
+
+  // Only fetch active orders for authenticated customers
+  if (authUser == null || authUser.isShopper) {
+    return [];
+  }
+
+  return repository.getActiveOrders(customerId: authUser.userId);
 });
 
 final recentRequestsProvider = FutureProvider<List<RecentRequest>>((ref) async {
   final repository = ref.read(swiftShopperRepositoryProvider);
   final authUser = ref.read(authProvider).user;
-  final userId = authUser == null || authUser.isShopper ? null : authUser.userId;
+  final userId =
+      authUser == null || authUser.isShopper ? null : authUser.userId;
   return repository.getRecentRequests(customerId: userId);
 });
 
-final availableRequestsProvider = FutureProvider<List<AvailableRequestData>>((ref) async {
+final availableRequestsProvider = FutureProvider<List<AvailableRequestData>>((
+  ref,
+) async {
   return ref.read(swiftShopperRepositoryProvider).getAvailableRequests();
 });
 
@@ -43,19 +51,28 @@ final activeJobProvider = FutureProvider<ActiveJobData?>((ref) async {
   return repository.getActiveJob();
 });
 
-final shopperOrderHistoryProvider = FutureProvider<List<ShopperOrderData>>((ref) async {
+final shopperOrderHistoryProvider = FutureProvider<List<ShopperOrderData>>((
+  ref,
+) async {
   final repository = ref.read(swiftShopperRepositoryProvider);
   return repository.getShopperOrderHistory();
 });
 
-final orderTrackingProvider =
-    FutureProvider.family<OrderTrackingData?, String>((ref, orderId) async {
-  return ref.read(swiftShopperRepositoryProvider).getOrderTracking(orderId: orderId);
-});
+final orderTrackingProvider = FutureProvider.family<OrderTrackingData?, String>(
+  (ref, orderId) async {
+    return ref
+        .read(swiftShopperRepositoryProvider)
+        .getOrderTracking(orderId: orderId);
+  },
+);
 
-final orderItemsProvider =
-    FutureProvider.family<List<ActiveJobItem>, String>((ref, orderId) async {
-  return ref.read(swiftShopperRepositoryProvider).getOrderItems(orderId: orderId);
+final orderItemsProvider = FutureProvider.family<List<ActiveJobItem>, String>((
+  ref,
+  orderId,
+) async {
+  return ref
+      .read(swiftShopperRepositoryProvider)
+      .getOrderItems(orderId: orderId);
 });
 
 final supermarketsProvider = FutureProvider<List<MarketData>>((ref) async {

@@ -206,10 +206,20 @@ public class DbSwiftShopperService : ISwiftShopperService
     public async Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(
         string customerId, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return Array.Empty<ActiveOrderDto>();
+        }
+
         var requestIds = await _dbContext.ShoppingRequests.AsNoTracking()
             .Where(x => x.CustomerId == customerId)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
+
+        if (requestIds.Count == 0)
+        {
+            return Array.Empty<ActiveOrderDto>();
+        }
 
         var orders = await _dbContext.Orders.AsNoTracking()
             .Where(x => requestIds.Contains(x.RequestId) && x.Status != OrderStatus.Delivered)
@@ -218,19 +228,23 @@ public class DbSwiftShopperService : ISwiftShopperService
 
         var orderIds = orders.Select(x => x.Id).ToList();
 
-        var allOrderItems = await _dbContext.OrderItems.AsNoTracking()
-            .Where(x => orderIds.Contains(x.OrderId))
-            .ToListAsync(cancellationToken);
+        var allOrderItems = orderIds.Count > 0
+            ? await _dbContext.OrderItems.AsNoTracking()
+                .Where(x => orderIds.Contains(x.OrderId))
+                .ToListAsync(cancellationToken)
+            : new List<OrderItem>();
 
         var allRequests = await _dbContext.ShoppingRequests.AsNoTracking()
             .Where(x => requestIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         var storeNames = orders.Select(x => x.StoreName).Where(n => !string.IsNullOrEmpty(n)).ToList();
-        var marketPhotos = await _dbContext.Markets.AsNoTracking()
-            .Where(x => storeNames.Contains(x.Name))
-            .Select(x => new { x.Name, x.PhotoUrl })
-            .ToListAsync(cancellationToken);
+        var marketPhotos = storeNames.Count > 0
+            ? await _dbContext.Markets.AsNoTracking()
+                .Where(x => storeNames.Contains(x.Name))
+                .Select(x => new { x.Name, x.PhotoUrl })
+                .ToListAsync(cancellationToken)
+            : new List<dynamic>();
 
         return orders.Select(order =>
         {

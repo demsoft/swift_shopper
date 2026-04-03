@@ -58,7 +58,9 @@ class SwiftShopperRepository {
     required bool asShopper,
   }) async {
     final path =
-        asShopper ? '/api/auth/register/shopper' : '/api/auth/register/customer';
+        asShopper
+            ? '/api/auth/register/shopper'
+            : '/api/auth/register/customer';
 
     final data = await apiClient.post(path, {
       'fullName': fullName,
@@ -101,7 +103,9 @@ class SwiftShopperRepository {
   }
 
   Future<SignupOtpChallenge> resendSignupOtp({required String userId}) async {
-    final data = await apiClient.post('/api/auth/resend-otp', {'userId': userId});
+    final data = await apiClient.post('/api/auth/resend-otp', {
+      'userId': userId,
+    });
 
     if (data is! Map<String, dynamic>) {
       throw ApiException('Invalid resend OTP response');
@@ -118,9 +122,12 @@ class SwiftShopperRepository {
   // ── Customer: Orders ──────────────────────────────────────────────────────
 
   Future<List<ActiveOrder>> getActiveOrders({String? customerId}) async {
-    final data = await apiClient.get(
-      '/api/orders/active/${customerId ?? AppEnv.customerId}',
-    );
+    final actualCustomerId = customerId ?? AppEnv.customerId;
+    if (actualCustomerId.isEmpty) {
+      return const [];
+    }
+
+    final data = await apiClient.get('/api/orders/active/$actualCustomerId');
 
     if (data is! List) return const [];
 
@@ -128,7 +135,8 @@ class SwiftShopperRepository {
       final map = item as Map<String, dynamic>;
       final statusInt = map['status'] is int ? map['status'] as int : 0;
       final itemsSubtotal = (map['itemsSubtotal'] as num? ?? 0).toDouble();
-      final estimatedItemsTotal = (map['estimatedItemsTotal'] as num? ?? 0).toDouble();
+      final estimatedItemsTotal =
+          (map['estimatedItemsTotal'] as num? ?? 0).toDouble();
       final deliveryFee = (map['deliveryFee'] as num? ?? 0).toDouble();
       final serviceFee = (map['serviceFee'] as num? ?? 0).toDouble();
       final baseItems = itemsSubtotal > 0 ? itemsSubtotal : estimatedItemsTotal;
@@ -181,22 +189,24 @@ class SwiftShopperRepository {
     if (data == null || data is! Map<String, dynamic>) return null;
 
     final rawItems = data['items'] as List? ?? [];
-    final items = rawItems.map((i) {
-      final m = i as Map<String, dynamic>;
-      return ActiveJobItem(
-        id: (m['id'] as num? ?? 0).toInt(),
-        name: m['name']?.toString() ?? '',
-        unit: m['unit']?.toString() ?? '',
-        description: m['description']?.toString() ?? '',
-        quantity: (m['quantity'] as num? ?? 1).toInt(),
-        estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
-        foundPrice: m['foundPrice'] != null
-            ? (m['foundPrice'] as num).toDouble()
-            : null,
-        status: (m['status'] as num? ?? 0).toInt(),
-        photoUrl: m['photoUrl']?.toString(),
-      );
-    }).toList();
+    final items =
+        rawItems.map((i) {
+          final m = i as Map<String, dynamic>;
+          return ActiveJobItem(
+            id: (m['id'] as num? ?? 0).toInt(),
+            name: m['name']?.toString() ?? '',
+            unit: m['unit']?.toString() ?? '',
+            description: m['description']?.toString() ?? '',
+            quantity: (m['quantity'] as num? ?? 1).toInt(),
+            estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
+            foundPrice:
+                m['foundPrice'] != null
+                    ? (m['foundPrice'] as num).toDouble()
+                    : null,
+            status: (m['status'] as num? ?? 0).toInt(),
+            photoUrl: m['photoUrl']?.toString(),
+          );
+        }).toList();
 
     return ActiveJobData(
       orderId: data['orderId']?.toString() ?? '',
@@ -224,16 +234,20 @@ class SwiftShopperRepository {
     return data.map((item) {
       final map = item as Map<String, dynamic>;
       final rawItems = map['items'] as List? ?? [];
-      final parsedItems = rawItems.map((i) {
-        final m = i as Map<String, dynamic>;
-        return AvailableRequestItem(
-          name: m['name']?.toString() ?? '',
-          unit: m['unit']?.toString() ?? '',
-          description: m['description']?.toString() ?? '',
-          quantity: (m['quantity'] as num? ?? 1).toInt(),
-          price: (m['price'] as num? ?? 0).toDouble(),
-        );
-      }).where((i) => i.name.isNotEmpty).toList();
+      final parsedItems =
+          rawItems
+              .map((i) {
+                final m = i as Map<String, dynamic>;
+                return AvailableRequestItem(
+                  name: m['name']?.toString() ?? '',
+                  unit: m['unit']?.toString() ?? '',
+                  description: m['description']?.toString() ?? '',
+                  quantity: (m['quantity'] as num? ?? 1).toInt(),
+                  price: (m['price'] as num? ?? 0).toDouble(),
+                );
+              })
+              .where((i) => i.name.isNotEmpty)
+              .toList();
       final marketTypeInt = map['marketType'] as int? ?? 0;
       return AvailableRequestData(
         requestId: map['id']?.toString() ?? '',
@@ -260,7 +274,10 @@ class SwiftShopperRepository {
         description: m['description']?.toString() ?? '',
         quantity: (m['quantity'] as num? ?? 1).toInt(),
         estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
-        foundPrice: m['foundPrice'] != null ? (m['foundPrice'] as num).toDouble() : null,
+        foundPrice:
+            m['foundPrice'] != null
+                ? (m['foundPrice'] as num).toDouble()
+                : null,
         status: (m['status'] as num? ?? 0).toInt(),
         photoUrl: m['photoUrl']?.toString(),
       );
@@ -272,7 +289,8 @@ class SwiftShopperRepository {
 
     if (data is! Map<String, dynamic>) return null;
 
-    final statusInt = data['currentStatus'] is int ? data['currentStatus'] as int : 0;
+    final statusInt =
+        data['currentStatus'] is int ? data['currentStatus'] as int : 0;
     return OrderTrackingData(
       orderId: orderId,
       shopperName: data['shopperName']?.toString() ?? 'Shopper',
@@ -283,7 +301,8 @@ class SwiftShopperRepository {
       progressPercent: (data['progressPercent'] as num? ?? 0).toInt(),
       pickedItemsCount: (data['pickedItemsCount'] as num? ?? 0).toInt(),
       totalItemsCount: (data['totalItemsCount'] as num? ?? 1).toInt(),
-      estimatedDeliveryMinutes: (data['estimatedDeliveryMinutes'] as num? ?? 0).toInt(),
+      estimatedDeliveryMinutes:
+          (data['estimatedDeliveryMinutes'] as num? ?? 0).toInt(),
     );
   }
 
@@ -293,21 +312,24 @@ class SwiftShopperRepository {
     if (data is! Map<String, dynamic>) return null;
 
     final rawItems = data['items'] as List? ?? [];
-    final items = rawItems.map((i) {
-      final m = i as Map<String, dynamic>;
-      return OrderSummaryItem(
-        name: m['name']?.toString() ?? '',
-        unit: m['unit']?.toString() ?? '',
-        quantity: (m['quantity'] as num? ?? 1).toInt(),
-        price: (m['price'] as num? ?? 0).toDouble(),
-        photoUrl: m['photoUrl']?.toString(),
-      );
-    }).toList();
+    final items =
+        rawItems.map((i) {
+          final m = i as Map<String, dynamic>;
+          return OrderSummaryItem(
+            name: m['name']?.toString() ?? '',
+            unit: m['unit']?.toString() ?? '',
+            quantity: (m['quantity'] as num? ?? 1).toInt(),
+            price: (m['price'] as num? ?? 0).toDouble(),
+            photoUrl: m['photoUrl']?.toString(),
+          );
+        }).toList();
 
-    final deliveredAt = DateTime.tryParse(data['deliveredAt']?.toString() ?? '')?.toLocal();
-    final dateStr = deliveredAt != null
-        ? '${deliveredAt.day}/${deliveredAt.month}/${deliveredAt.year}'
-        : '';
+    final deliveredAt =
+        DateTime.tryParse(data['deliveredAt']?.toString() ?? '')?.toLocal();
+    final dateStr =
+        deliveredAt != null
+            ? '${deliveredAt.day}/${deliveredAt.month}/${deliveredAt.year}'
+            : '';
 
     return OrderSummaryData(
       orderId: orderId,
@@ -345,16 +367,19 @@ class SwiftShopperRepository {
       'deliveryAddress': deliveryAddress,
       if (deliveryNotes != null && deliveryNotes.isNotEmpty)
         'deliveryNotes': deliveryNotes,
-      'items': items
-          .map((item) => {
-                'name': item.name,
-                'quantity': item.quantity,
-                'unit': item.unit,
-                'description': item.description,
-                'price': item.price,
-                'maxPrice': item.maxPrice,
-              })
-          .toList(),
+      'items':
+          items
+              .map(
+                (item) => {
+                  'name': item.name,
+                  'quantity': item.quantity,
+                  'unit': item.unit,
+                  'description': item.description,
+                  'price': item.price,
+                  'maxPrice': item.maxPrice,
+                },
+              )
+              .toList(),
     });
   }
 
@@ -373,9 +398,10 @@ class SwiftShopperRepository {
       'status': status,
       // Send as num to avoid .0 suffix that some .NET parsers reject for decimal
       if (foundPrice != null)
-        'foundPrice': foundPrice == foundPrice.truncateToDouble()
-            ? foundPrice.toInt()
-            : foundPrice,
+        'foundPrice':
+            foundPrice == foundPrice.truncateToDouble()
+                ? foundPrice.toInt()
+                : foundPrice,
       if (photoUrl != null) 'photoUrl': photoUrl,
     });
   }
@@ -402,22 +428,24 @@ class SwiftShopperRepository {
     if (data == null || data is! Map<String, dynamic>) return null;
 
     final rawItems = data['items'] as List? ?? [];
-    final items = rawItems.map((i) {
-      final m = i as Map<String, dynamic>;
-      return ActiveJobItem(
-        id: (m['id'] as num? ?? 0).toInt(),
-        name: m['name']?.toString() ?? '',
-        unit: m['unit']?.toString() ?? '',
-        description: m['description']?.toString() ?? '',
-        quantity: (m['quantity'] as num? ?? 1).toInt(),
-        estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
-        foundPrice: m['foundPrice'] != null
-            ? (m['foundPrice'] as num).toDouble()
-            : null,
-        status: (m['status'] as num? ?? 0).toInt(),
-        photoUrl: m['photoUrl']?.toString(),
-      );
-    }).toList();
+    final items =
+        rawItems.map((i) {
+          final m = i as Map<String, dynamic>;
+          return ActiveJobItem(
+            id: (m['id'] as num? ?? 0).toInt(),
+            name: m['name']?.toString() ?? '',
+            unit: m['unit']?.toString() ?? '',
+            description: m['description']?.toString() ?? '',
+            quantity: (m['quantity'] as num? ?? 1).toInt(),
+            estimatedPrice: (m['estimatedPrice'] as num? ?? 0).toDouble(),
+            foundPrice:
+                m['foundPrice'] != null
+                    ? (m['foundPrice'] as num).toDouble()
+                    : null,
+            status: (m['status'] as num? ?? 0).toInt(),
+            photoUrl: m['photoUrl']?.toString(),
+          );
+        }).toList();
 
     return ActiveJobData(
       orderId: data['orderId']?.toString() ?? '',
@@ -450,10 +478,12 @@ class SwiftShopperRepository {
 
     return data.map((item) {
       final map = item as Map<String, dynamic>;
-      final completedAt = DateTime.tryParse(map['completedAt']?.toString() ?? '')?.toLocal();
-      final dateStr = completedAt != null
-          ? '${completedAt.day}/${completedAt.month}/${completedAt.year}'
-          : 'Recently';
+      final completedAt =
+          DateTime.tryParse(map['completedAt']?.toString() ?? '')?.toLocal();
+      final dateStr =
+          completedAt != null
+              ? '${completedAt.day}/${completedAt.month}/${completedAt.year}'
+              : 'Recently';
 
       return ShopperOrderData(
         orderId: map['orderId']?.toString() ?? '',
@@ -470,17 +500,19 @@ class SwiftShopperRepository {
   // ── Public Markets ────────────────────────────────────────────────────────
 
   Future<List<MarketData>> getMarkets({String? type}) async {
-    final path = type != null
-        ? '/api/markets?type=${Uri.encodeComponent(type)}'
-        : '/api/markets';
+    final path =
+        type != null
+            ? '/api/markets?type=${Uri.encodeComponent(type)}'
+            : '/api/markets';
     final data = await apiClient.get(path);
     if (data is! List) return const [];
     return data.map((item) {
       final m = item as Map<String, dynamic>;
       final rawCats = m['categories'];
-      final cats = rawCats is List
-          ? rawCats.map((e) => e.toString()).toList()
-          : <String>[];
+      final cats =
+          rawCats is List
+              ? rawCats.map((e) => e.toString()).toList()
+              : <String>[];
       return MarketData(
         marketId: m['marketId']?.toString() ?? '',
         name: m['name']?.toString() ?? '',
@@ -542,16 +574,20 @@ class SwiftShopperRepository {
   ChatMessage mapChatMessage(dynamic item) {
     final map = Map<String, dynamic>.from(item as Map);
     final senderRaw = map['sender']?.toString().toLowerCase() ?? 'shopper';
-    final sender = senderRaw == 'customer' ? SenderType.customer : SenderType.shopper;
+    final sender =
+        senderRaw == 'customer' ? SenderType.customer : SenderType.shopper;
 
     final typeRaw = map['type']?.toString().toLowerCase() ?? 'text';
     final type = typeRaw == 'image' ? MessageType.image : MessageType.text;
 
     return ChatMessage(
-      id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id:
+          map['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       sender: sender,
       type: type,
-      time: DateTime.tryParse(map['sentAt']?.toString() ?? '') ?? DateTime.now(),
+      time:
+          DateTime.tryParse(map['sentAt']?.toString() ?? '') ?? DateTime.now(),
       text: map['text']?.toString(),
       imageUrl: map['imageUrl']?.toString(),
     );
@@ -562,15 +598,13 @@ class SwiftShopperRepository {
     String? orderId,
     bool isShopper = false,
   }) async {
-    await apiClient.post(
-      '/api/orders/${orderId ?? AppEnv.orderId}/chat/messages',
-      {
-        'sender': isShopper ? 'shopper' : 'customer',
-        'type': 'text',
-        'text': text,
-        'imageUrl': null,
-      },
-    );
+    await apiClient
+        .post('/api/orders/${orderId ?? AppEnv.orderId}/chat/messages', {
+          'sender': isShopper ? 'shopper' : 'customer',
+          'type': 'text',
+          'text': text,
+          'imageUrl': null,
+        });
   }
 
   Future<void> sendPriceDecision({
