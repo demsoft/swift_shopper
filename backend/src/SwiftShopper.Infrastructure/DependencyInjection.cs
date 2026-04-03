@@ -38,7 +38,17 @@ public static class DependencyInjection
 
         services.AddSingleton(mailConfiguration);
         services.AddScoped<IEmailService, SmtpEmailService>();
-        services.AddScoped<ISwiftShopperService, DbSwiftShopperService>();
+        // Use InMemorySwiftShopperService for development/testing, or DbSwiftShopperService for production with real DB
+        var useInMemoryStr = configuration["UseInMemoryDatabase"] ?? "false";
+        var useInMemory = bool.TryParse(useInMemoryStr, out var result) && result;
+        if (useInMemory)
+        {
+            services.AddSingleton<ISwiftShopperService, InMemorySwiftShopperService>();
+        }
+        else
+        {
+            services.AddScoped<ISwiftShopperService, DbSwiftShopperService>();
+        }
         services.AddScoped<IImageService, CloudinaryImageService>();
 
         return services;
