@@ -122,12 +122,7 @@ class SwiftShopperRepository {
   // ── Customer: Orders ──────────────────────────────────────────────────────
 
   Future<List<ActiveOrder>> getActiveOrders({String? customerId}) async {
-    final actualCustomerId = customerId ?? AppEnv.customerId;
-    if (actualCustomerId.isEmpty) {
-      return const [];
-    }
-
-    final data = await apiClient.get('/api/orders/active/$actualCustomerId');
+    final data = await apiClient.get('/api/orders/active');
 
     if (data is! List) return const [];
 

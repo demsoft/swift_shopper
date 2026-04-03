@@ -17,19 +17,49 @@ public static class OrdersEndpoints
             ISwiftShopperService service,
             CancellationToken cancellationToken) =>
         {
-            var authenticatedCustomerId = GetAuthenticatedUserId(user);
-            if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
+            try
             {
-                return Results.Unauthorized();
-            }
+                var authenticatedCustomerId = GetAuthenticatedUserId(user);
+                if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
+                {
+                    return Results.Unauthorized();
+                }
 
-            if (!string.Equals(customerId, authenticatedCustomerId, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(customerId, authenticatedCustomerId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Forbid();
+                }
+
+                var orders = await service.GetActiveOrdersAsync(customerId, cancellationToken);
+                return Results.Ok(orders);
+            }
+            catch
             {
-                return Results.Forbid();
+                return Results.StatusCode(500);
             }
+        });
 
-            var orders = await service.GetActiveOrdersAsync(customerId, cancellationToken);
-            return Results.Ok(orders);
+        // GET /api/orders/active — customer's active orders (simplified, uses auth context)
+        group.MapGet("/active", async (
+            ClaimsPrincipal user,
+            ISwiftShopperService service,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var authenticatedCustomerId = GetAuthenticatedUserId(user);
+                if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var orders = await service.GetActiveOrdersAsync(authenticatedCustomerId, cancellationToken);
+                return Results.Ok(orders);
+            }
+            catch
+            {
+                return Results.StatusCode(500);
+            }
         });
 
         // GET /api/orders/{orderId}/tracking — order tracking (customer)
