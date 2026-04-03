@@ -18,21 +18,13 @@ public static class ChatEndpoints
             ISwiftShopperService service,
             CancellationToken cancellationToken) =>
         {
-            var authenticatedCustomerId = GetAuthenticatedUserId(user);
-            if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
-            {
+            var userId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(userId))
                 return Results.Unauthorized();
-            }
 
-            var isOwner = await service.IsOrderOwnedByCustomerAsync(
-                orderId,
-                authenticatedCustomerId,
-                cancellationToken);
-
-            if (!isOwner)
-            {
+            var canAccess = await service.CanAccessOrderChatAsync(orderId, userId, cancellationToken);
+            if (!canAccess)
                 return Results.Forbid();
-            }
 
             var messages = await service.GetMessagesAsync(orderId, cancellationToken);
             return Results.Ok(messages);
@@ -46,21 +38,13 @@ public static class ChatEndpoints
             IHubContext<ChatHub> hubContext,
             CancellationToken cancellationToken) =>
         {
-            var authenticatedCustomerId = GetAuthenticatedUserId(user);
-            if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
-            {
+            var userId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(userId))
                 return Results.Unauthorized();
-            }
 
-            var isOwner = await service.IsOrderOwnedByCustomerAsync(
-                orderId,
-                authenticatedCustomerId,
-                cancellationToken);
-
-            if (!isOwner)
-            {
+            var canAccess = await service.CanAccessOrderChatAsync(orderId, userId, cancellationToken);
+            if (!canAccess)
                 return Results.Forbid();
-            }
 
             var message = await service.SendMessageAsync(orderId, request, cancellationToken);
             await hubContext.Clients
@@ -78,21 +62,13 @@ public static class ChatEndpoints
             IHubContext<ChatHub> hubContext,
             CancellationToken cancellationToken) =>
         {
-            var authenticatedCustomerId = GetAuthenticatedUserId(user);
-            if (string.IsNullOrWhiteSpace(authenticatedCustomerId))
-            {
+            var userId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(userId))
                 return Results.Unauthorized();
-            }
 
-            var isOwner = await service.IsOrderOwnedByCustomerAsync(
-                orderId,
-                authenticatedCustomerId,
-                cancellationToken);
-
-            if (!isOwner)
-            {
+            var canAccess = await service.CanAccessOrderChatAsync(orderId, userId, cancellationToken);
+            if (!canAccess)
                 return Results.Forbid();
-            }
 
             var message = await service.ResolvePriceCardAsync(orderId, request, cancellationToken);
             await hubContext.Clients

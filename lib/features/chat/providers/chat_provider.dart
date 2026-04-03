@@ -6,31 +6,38 @@ import '../../shared/data/swift_shopper_repository.dart';
 import '../data/chat_realtime_provider.dart';
 import '../models/chat_message.dart';
 
+class ChatArgs {
+  const ChatArgs({required this.orderId, required this.isShopper});
+  final String orderId;
+  final bool isShopper;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ChatArgs &&
+      other.orderId == orderId &&
+      other.isShopper == isShopper;
+
+  @override
+  int get hashCode => Object.hash(orderId, isShopper);
+}
+
 class ChatState {
   const ChatState({
-    required this.otherPersonName,
-    required this.status,
     required this.messages,
     required this.isRealtimeConnected,
     this.isSending = false,
   });
 
-  final String otherPersonName;
-  final String status;
   final List<ChatMessage> messages;
   final bool isRealtimeConnected;
   final bool isSending;
 
   ChatState copyWith({
-    String? otherPersonName,
-    String? status,
     List<ChatMessage>? messages,
     bool? isRealtimeConnected,
     bool? isSending,
   }) {
     return ChatState(
-      otherPersonName: otherPersonName ?? this.otherPersonName,
-      status: status ?? this.status,
       messages: messages ?? this.messages,
       isRealtimeConnected: isRealtimeConnected ?? this.isRealtimeConnected,
       isSending: isSending ?? this.isSending,
@@ -38,21 +45,24 @@ class ChatState {
   }
 }
 
-class ChatNotifier extends FamilyAsyncNotifier<ChatState, String> {
+class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   StreamSubscription<bool>? _connectionSubscription;
+  Timer? _pollTimer;
 
   @override
-  Future<ChatState> build(String orderId) async {
+  Future<ChatState> build(ChatArgs arg) async {
     final repository = ref.read(swiftShopperRepositoryProvider);
     final realtimeService = ref.read(signalRChatServiceProvider);
 
     ref.onDispose(() {
       _messageSubscription?.cancel();
       _connectionSubscription?.cancel();
+      _pollTimer?.cancel();
       unawaited(realtimeService.disconnect());
     });
 
+    // SignalR: push new messages into state
     _messageSubscription?.cancel();
     _messageSubscription = realtimeService.messages.listen((payload) {
       final current = state.valueOrNull;
@@ -66,6 +76,7 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, String> {
       );
     });
 
+    // Track connection status
     _connectionSubscription?.cancel();
     _connectionSubscription = realtimeService.connectionStatus.listen((isLive) {
       final current = state.valueOrNull;
@@ -73,18 +84,32 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, String> {
       state = AsyncData(current.copyWith(isRealtimeConnected: isLive));
     });
 
+    // Polling fallback: re-fetch every 5 s to catch any messages
+    // that SignalR may have missed
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      final current = state.valueOrNull;
+      if (current == null) return;
+      try {
+        final refreshed =
+            await repository.getChatMessages(orderId: arg.orderId);
+        // Only update state if there are genuinely new messages
+        if (refreshed.length != current.messages.length) {
+          state = AsyncData(current.copyWith(messages: refreshed));
+        }
+      } catch (_) {}
+    });
+
     List<ChatMessage> messages = const [];
     try {
-      messages = await repository.getChatMessages(orderId: orderId);
+      messages = await repository.getChatMessages(orderId: arg.orderId);
     } catch (_) {}
 
     try {
-      await realtimeService.connect(orderId: orderId);
+      await realtimeService.connect(orderId: arg.orderId);
     } catch (_) {}
 
     return ChatState(
-      otherPersonName: '',
-      status: '',
       messages: messages,
       isRealtimeConnected: realtimeService.isConnected,
     );
@@ -97,35 +122,42 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, String> {
     final current = state.valueOrNull;
     if (current == null) return;
 
-    state = AsyncData(current.copyWith(isSending: true));
+    // Optimistically add the sent message to the local list immediately
+    final optimisticMsg = ChatMessage(
+      id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+      sender: arg.isShopper ? SenderType.shopper : SenderType.customer,
+      type: MessageType.text,
+      time: DateTime.now(),
+      text: trimmed,
+    );
+
+    state = AsyncData(current.copyWith(
+      messages: [...current.messages, optimisticMsg],
+      isSending: true,
+    ));
 
     try {
       final repository = ref.read(swiftShopperRepositoryProvider);
-      final realtimeService = ref.read(signalRChatServiceProvider);
-      await repository.sendTextMessage(text: trimmed, orderId: arg);
+      await repository.sendTextMessage(
+        text: trimmed,
+        orderId: arg.orderId,
+        isShopper: arg.isShopper,
+      );
 
-      if (!realtimeService.isConnected) {
-        final refreshed = await repository.getChatMessages(orderId: arg);
-        state = AsyncData(
-          current.copyWith(messages: refreshed, isSending: false),
-        );
-      } else {
-        state = AsyncData(current.copyWith(isSending: false));
-      }
+      // Replace optimistic message with the real one from server
+      final refreshed = await repository.getChatMessages(orderId: arg.orderId);
+      state = AsyncData(current.copyWith(messages: refreshed, isSending: false));
     } catch (_) {
-      state = AsyncData(current.copyWith(isSending: false));
+      // Keep the optimistic message visible even if send failed
+      final withoutSending = state.valueOrNull;
+      if (withoutSending != null) {
+        state = AsyncData(withoutSending.copyWith(isSending: false));
+      }
     }
-  }
-
-  Future<void> sendPriceDecision(int decision) async {
-    try {
-      final repository = ref.read(swiftShopperRepositoryProvider);
-      await repository.sendPriceDecision(decision: decision, orderId: arg);
-    } catch (_) {}
   }
 }
 
 final chatProvider =
-    AsyncNotifierProviderFamily<ChatNotifier, ChatState, String>(
+    AsyncNotifierProviderFamily<ChatNotifier, ChatState, ChatArgs>(
   ChatNotifier.new,
 );

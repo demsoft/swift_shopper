@@ -558,6 +558,7 @@ class _CustomerRowState extends State<_CustomerRow> {
               MaterialPageRoute<void>(
                 builder: (_) => ChatScreen(
                         orderId: widget.orderId,
+                        isShopper: true,
                         otherPersonName: widget.customerName,
                         otherPersonRole: 'CUSTOMER',
                         otherPersonAvatarUrl: widget.customerAvatarUrl,

@@ -19,6 +19,8 @@ class ActiveOrder {
     this.estimatedItemsTotal = 0,
     this.itemsSubtotal = 0,
     this.storePhotoUrl,
+    this.pickedItemsCount = 0,
+    this.totalItemsCount = 0,
   });
 
   final String orderId;
@@ -32,6 +34,8 @@ class ActiveOrder {
   final double estimatedItemsTotal;
   final double itemsSubtotal;
   final String? storePhotoUrl;
+  final int pickedItemsCount;
+  final int totalItemsCount;
 }
 
 class RecentRequest {

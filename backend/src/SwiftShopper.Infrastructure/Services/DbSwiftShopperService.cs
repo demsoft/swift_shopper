@@ -252,6 +252,24 @@ public class DbSwiftShopperService : ISwiftShopperService
             .AnyAsync(x => x.Id == requestId && x.CustomerId == customerId, cancellationToken);
     }
 
+    public async Task<bool> CanAccessOrderChatAsync(
+        string orderId, string userId, CancellationToken cancellationToken)
+    {
+        var order = await _dbContext.Orders.AsNoTracking()
+            .Where(x => x.Id == orderId)
+            .Select(x => new { x.ShopperId, x.RequestId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (order is null) return false;
+
+        // Allow shopper assigned to the order
+        if (order.ShopperId == userId) return true;
+
+        // Allow the customer who owns the order
+        return await _dbContext.ShoppingRequests.AsNoTracking()
+            .AnyAsync(x => x.Id == order.RequestId && x.CustomerId == userId, cancellationToken);
+    }
+
     public async Task<OrderTrackingDto?> GetOrderTrackingAsync(
         string orderId, CancellationToken cancellationToken)
     {

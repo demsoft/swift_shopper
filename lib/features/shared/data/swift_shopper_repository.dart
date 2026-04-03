@@ -144,6 +144,8 @@ class SwiftShopperRepository {
         estimatedItemsTotal: estimatedItemsTotal,
         itemsSubtotal: itemsSubtotal,
         storePhotoUrl: map['storePhotoUrl']?.toString(),
+        pickedItemsCount: (map['pickedItemsCount'] as num? ?? 0).toInt(),
+        totalItemsCount: (map['totalItemsCount'] as num? ?? 0).toInt(),
       );
     }).toList();
   }
@@ -549,10 +551,19 @@ class SwiftShopperRepository {
     );
   }
 
-  Future<void> sendTextMessage({required String text, String? orderId}) async {
+  Future<void> sendTextMessage({
+    required String text,
+    String? orderId,
+    bool isShopper = false,
+  }) async {
     await apiClient.post(
       '/api/orders/${orderId ?? AppEnv.orderId}/chat/messages',
-      {'sender': 'customer', 'type': 'text', 'text': text, 'imageUrl': null},
+      {
+        'sender': isShopper ? 'shopper' : 'customer',
+        'type': 'text',
+        'text': text,
+        'imageUrl': null,
+      },
     );
   }
 

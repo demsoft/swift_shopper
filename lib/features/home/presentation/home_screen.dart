@@ -556,23 +556,14 @@ class _CustomerOrderCard extends StatelessWidget {
   final ActiveOrder order;
   final VoidCallback? onTap;
 
-  static double _progress(String status) {
-    switch (status.toLowerCase()) {
-      case 'accepted': return 0.2;
-      case 'shopping': return 0.45;
-      case 'purchased': return 0.7;
-      case 'on the way': return 0.85;
-      case 'delivered': return 1.0;
-      default: return 0.05;
-    }
-  }
-
   String _fmtTotal(double v) => '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = _progress(order.status);
+    final progress = order.totalItemsCount > 0
+        ? order.pickedItemsCount / order.totalItemsCount
+        : 0.0;
     final photoUrl = order.storePhotoUrl;
 
     return GestureDetector(

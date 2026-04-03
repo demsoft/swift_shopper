@@ -84,10 +84,12 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             final storeName = tracking?.storeName ?? order.title;
             final status = tracking?.currentStatus ?? order.status;
             final stepLabel = tracking?.stepLabel ?? '';
-            final progressPercent = tracking?.progressPercent ?? 0;
-            final progress = progressPercent / 100.0;
             final pickedCount = tracking?.pickedItemsCount ?? 0;
             final totalCount = tracking?.totalItemsCount ?? 0;
+            // Derive progress from item counts (same as shopper screen) so all
+            // three views stay in sync instead of relying on backend's percent.
+            final progress = totalCount > 0 ? pickedCount / totalCount : 0.0;
+            final progressPercent = (progress * 100).round();
             final minsLeft = tracking?.estimatedDeliveryMinutes ?? 0;
 
             // Resolve photo: try order.storePhotoUrl first, then

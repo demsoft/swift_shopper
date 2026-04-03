@@ -360,6 +360,15 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(request.CustomerId.Equals(customerId, StringComparison.OrdinalIgnoreCase));
     }
 
+    public Task<bool> CanAccessOrderChatAsync(string orderId, string userId, CancellationToken cancellationToken)
+    {
+        var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));
+        if (order is null) return Task.FromResult(false);
+        if (order.ShopperId?.Equals(userId, StringComparison.OrdinalIgnoreCase) == true) return Task.FromResult(true);
+        var request = _requests.FirstOrDefault(x => x.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(request?.CustomerId.Equals(userId, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
     public Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(string orderId, CancellationToken cancellationToken)
     {
         var orderItems = _orderItems

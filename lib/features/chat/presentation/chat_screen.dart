@@ -8,12 +8,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({
     super.key,
     required this.orderId,
+    this.isShopper = false,
     this.otherPersonName = '',
     this.otherPersonRole = 'SHOPPER',
     this.otherPersonAvatarUrl,
   });
 
   final String orderId;
+  final bool isShopper;
   final String otherPersonName;
   final String otherPersonRole;
   final String? otherPersonAvatarUrl;
@@ -52,20 +54,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return '$h:$m $period';
   }
 
+  ChatArgs get _args =>
+      ChatArgs(orderId: widget.orderId, isShopper: widget.isShopper);
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
-    await ref.read(chatProvider(widget.orderId).notifier).sendTextMessage(text);
+    await ref.read(chatProvider(_args).notifier).sendTextMessage(text);
     _scrollToBottom();
   }
 
   @override
   Widget build(BuildContext context) {
-    final chatAsync = ref.watch(chatProvider(widget.orderId));
+    final chatAsync = ref.watch(chatProvider(_args));
 
     // Auto-scroll when new messages arrive
-    ref.listen(chatProvider(widget.orderId), (_, next) {
+    ref.listen(chatProvider(_args), (_, next) {
       if (next.hasValue) _scrollToBottom();
     });
 
@@ -94,7 +99,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () =>
-                            ref.invalidate(chatProvider(widget.orderId)),
+                            ref.invalidate(chatProvider(_args)),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -117,7 +122,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     itemCount: chat.messages.length,
                     itemBuilder: (context, index) {
                       final msg = chat.messages[index];
-                      final isSent = msg.sender == SenderType.customer;
+                      final isSent = widget.isShopper
+                          ? msg.sender == SenderType.shopper
+                          : msg.sender == SenderType.customer;
                       final timeStr = _fmtTime(msg.time);
 
                       if (msg.type == MessageType.image) {
