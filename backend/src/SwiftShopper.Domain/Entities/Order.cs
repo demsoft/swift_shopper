@@ -21,11 +21,13 @@ public class Order
 
     public decimal ItemsSubtotal { get; set; }
 
+    public decimal ShopperFee { get; set; }
+
     public decimal DeliveryFee { get; set; }
 
     public decimal ServiceFee { get; set; }
 
-    public decimal TotalAmount => ItemsSubtotal + DeliveryFee + ServiceFee;
+    public decimal TotalAmount => ItemsSubtotal + ShopperFee + DeliveryFee + ServiceFee;
 
     public int EstimatedDeliveryMinutes { get; set; }
 

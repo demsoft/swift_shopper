@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/data/swift_shopper_repository.dart';
@@ -49,6 +50,7 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   StreamSubscription<bool>? _connectionSubscription;
   Timer? _pollTimer;
+  final _player = AudioPlayer();
 
   @override
   Future<ChatState> build(ChatArgs arg) async {
@@ -59,6 +61,7 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
       _messageSubscription?.cancel();
       _connectionSubscription?.cancel();
       _pollTimer?.cancel();
+      _player.dispose();
       unawaited(realtimeService.disconnect());
     });
 
@@ -70,6 +73,14 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
 
       final message = repository.mapChatMessage(payload);
       if (current.messages.any((m) => m.id == message.id)) return;
+
+      // Play beep only for incoming messages (not sent by current user)
+      final isIncoming = arg.isShopper
+          ? message.sender == SenderType.customer
+          : message.sender == SenderType.shopper;
+      if (isIncoming) {
+        unawaited(_player.play(AssetSource('sounds/message_beep.wav')));
+      }
 
       state = AsyncData(
         current.copyWith(messages: [...current.messages, message]),
@@ -95,6 +106,16 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
             await repository.getChatMessages(orderId: arg.orderId);
         // Only update state if there are genuinely new messages
         if (refreshed.length != current.messages.length) {
+          // Check if the newest message is incoming
+          if (refreshed.isNotEmpty) {
+            final newest = refreshed.last;
+            final isIncoming = arg.isShopper
+                ? newest.sender == SenderType.customer
+                : newest.sender == SenderType.shopper;
+            if (isIncoming) {
+              unawaited(_player.play(AssetSource('sounds/message_beep.wav')));
+            }
+          }
           state = AsyncData(current.copyWith(messages: refreshed));
         }
       } catch (_) {}

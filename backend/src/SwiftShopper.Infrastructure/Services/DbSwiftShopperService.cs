@@ -16,8 +16,42 @@ public class DbSwiftShopperService : ISwiftShopperService
     private readonly IEmailService _emailService;
     private static readonly TimeSpan OtpTtl = TimeSpan.FromMinutes(10);
     private const int MaxOtpVerificationAttempts = 5;
-    private const decimal DeliveryFeeFixed = 1200m;
-    private const decimal ServiceFeeFixed = 350m;
+    private const decimal ServiceFeeFixed = 1500m;
+    private const decimal DeliveryFeePerKm = 100m;
+    private const decimal DeliveryFeeDefault = 1500m;
+    private const decimal ShopperFeeRate = 0.12m;
+    private const decimal ShopperFeeMin = 1000m;
+    private const decimal ShopperFeeMax = 7000m;
+
+    private static decimal CalculateShopperFee(decimal subtotal)
+    {
+        var fee = subtotal * ShopperFeeRate;
+        if (fee < ShopperFeeMin) fee = ShopperFeeMin;
+        if (fee > ShopperFeeMax) fee = ShopperFeeMax;
+        return Math.Round(fee, 2);
+    }
+
+    private static decimal CalculateDeliveryFee(double? storeLat, double? storeLng, double? deliveryLat, double? deliveryLng)
+    {
+        if (storeLat is null || storeLng is null || deliveryLat is null || deliveryLng is null)
+            return DeliveryFeeDefault;
+
+        var distanceKm = HaversineKm(storeLat.Value, storeLng.Value, deliveryLat.Value, deliveryLng.Value);
+        var fee = (decimal)distanceKm * DeliveryFeePerKm;
+        return Math.Round(Math.Max(fee, 500m), 2); // minimum ₦500
+    }
+
+    private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double R = 6371.0;
+        var dLat = (lat2 - lat1) * Math.PI / 180.0;
+        var dLon = (lon2 - lon1) * Math.PI / 180.0;
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
+              + Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0)
+              * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
+    }
 
     public DbSwiftShopperService(SwiftShopperDbContext dbContext, IEmailService emailService)
     {
@@ -148,7 +182,6 @@ public class DbSwiftShopperService : ISwiftShopperService
             Id = $"ORD-{Random.Shared.Next(1000, 9999)}",
             RequestId = entity.Id,
             Status = OrderStatus.Pending,
-            DeliveryFee = DeliveryFeeFixed,
             ServiceFee = ServiceFeeFixed,
             UpdatedAt = DateTimeOffset.UtcNow
         };
@@ -446,6 +479,13 @@ public class DbSwiftShopperService : ISwiftShopperService
         var customer = await _dbContext.UserAccounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == request.CustomerId, cancellationToken);
 
+        // Delivery fee: distance from store to customer's saved location
+        var market = await _dbContext.Markets.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Name.ToLower() == dto.StoreName.ToLower(), cancellationToken);
+        order.DeliveryFee = CalculateDeliveryFee(
+            market?.Latitude, market?.Longitude,
+            customer?.Latitude, customer?.Longitude);
+
         var orderItems = request.Items.Select(item => new OrderItem
         {
             OrderId = order.Id,
@@ -541,6 +581,14 @@ public class DbSwiftShopperService : ISwiftShopperService
             .FirstOrDefaultAsync(x => x.Id == orderId && x.ShopperId == shopperId, cancellationToken)
             ?? throw new InvalidOperationException("Order not found or not assigned to this shopper.");
 
+        // Calculate subtotal from actual found prices
+        var items = await _dbContext.OrderItems.AsNoTracking()
+            .Where(x => x.OrderId == orderId && x.Status == OrderItemStatus.Found)
+            .ToListAsync(cancellationToken);
+
+        var subtotal = items.Sum(i => i.FoundPrice ?? i.EstimatedPrice);
+        order.ItemsSubtotal = subtotal;
+        order.ShopperFee = CalculateShopperFee(subtotal);
         order.Status = OrderStatus.Purchased;
         order.UpdatedAt = DateTimeOffset.UtcNow;
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -688,6 +736,9 @@ public class DbSwiftShopperService : ISwiftShopperService
             PickedItemsCount = items.Count(i => i.Status == OrderItemStatus.Found),
             TotalItemsCount = items.Count,
             EstimatedTotal = items.Sum(i => (i.FoundPrice ?? i.EstimatedPrice) * i.Quantity),
+            ShopperFee = order.ShopperFee,
+            DeliveryFee = order.DeliveryFee,
+            ServiceFee = order.ServiceFee,
             Items = items.Select(i => new ActiveJobItemDto
             {
                 Id = i.Id,

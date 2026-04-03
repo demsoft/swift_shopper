@@ -211,6 +211,9 @@ class SwiftShopperRepository {
       pickedItemsCount: (data['pickedItemsCount'] as num? ?? 0).toInt(),
       totalItemsCount: (data['totalItemsCount'] as num? ?? 0).toInt(),
       estimatedTotal: (data['estimatedTotal'] as num? ?? 0).toDouble(),
+      deliveryFee: (data['deliveryFee'] as num? ?? 0).toDouble(),
+      serviceFee: (data['serviceFee'] as num? ?? 0).toDouble(),
+      shopperFee: (data['shopperFee'] as num? ?? 0).toDouble(),
       items: items,
     );
   }
@@ -429,6 +432,9 @@ class SwiftShopperRepository {
       pickedItemsCount: (data['pickedItemsCount'] as num? ?? 0).toInt(),
       totalItemsCount: (data['totalItemsCount'] as num? ?? 0).toInt(),
       estimatedTotal: (data['estimatedTotal'] as num? ?? 0).toDouble(),
+      deliveryFee: (data['deliveryFee'] as num? ?? 0).toDouble(),
+      serviceFee: (data['serviceFee'] as num? ?? 0).toDouble(),
+      shopperFee: (data['shopperFee'] as num? ?? 0).toDouble(),
       items: items,
     );
   }

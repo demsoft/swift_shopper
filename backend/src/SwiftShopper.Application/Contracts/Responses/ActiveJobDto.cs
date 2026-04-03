@@ -29,6 +29,12 @@ public class ActiveJobDto
 
     public decimal EstimatedTotal { get; init; }
 
+    public decimal ShopperFee { get; init; }
+
+    public decimal DeliveryFee { get; init; }
+
+    public decimal ServiceFee { get; init; }
+
     public required IReadOnlyList<ActiveJobItemDto> Items { get; init; }
 }
 

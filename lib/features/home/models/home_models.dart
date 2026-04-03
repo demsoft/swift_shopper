@@ -67,6 +67,9 @@ class ActiveJobData {
     required this.totalItemsCount,
     required this.estimatedTotal,
     required this.items,
+    this.deliveryFee = 0,
+    this.serviceFee = 0,
+    this.shopperFee = 0,
   });
 
   final String orderId;
@@ -82,6 +85,9 @@ class ActiveJobData {
   final int totalItemsCount;
   final double estimatedTotal;
   final List<ActiveJobItem> items;
+  final double deliveryFee;
+  final double serviceFee;
+  final double shopperFee;
 }
 
 class ActiveJobItem {

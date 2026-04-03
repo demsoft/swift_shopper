@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SwiftShopper.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c44a62999433327ccf56041da022dff434e01157")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+62619c3c3af1f3b9f8ce1b755b14aeca99f57dff")]
 [assembly: System.Reflection.AssemblyProductAttribute("SwiftShopper.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SwiftShopper.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

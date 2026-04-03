@@ -7,6 +7,7 @@ import '../../shared/data/swift_shopper_repository.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
 import 'scan_item_sheet.dart';
+import 'shopping_completed_screen.dart';
 
 // ===========================================================================
 // ACTIVE JOB SCREEN — loads real data from /api/orders/shopper/active-job
@@ -200,7 +201,13 @@ class _ActiveJobViewState extends ConsumerState<_ActiveJobView> {
       final repo = ref.read(swiftShopperRepositoryProvider);
       await repo.finishShopping(orderId: widget.job.orderId);
       ref.invalidate(activeJobProvider);
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => ShoppingCompletedScreen(job: widget.job),
+          ),
+        );
+      }
     } catch (e) {
       setState(() {
         _finishError = e.toString();
