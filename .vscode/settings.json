@@ -1,5 +1,13 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "flutter": true
+        "flutter": true,
+        "/^cd /Users/mac/Desktop/swift_shopper/backend && dotnet build 2>&1 \\| head -100$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet build 2>&1 \\| tail -30$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

@@ -239,11 +239,12 @@ public class DbSwiftShopperService : ISwiftShopperService
             .ToListAsync(cancellationToken);
 
         var storeNames = orders.Select(x => x.StoreName).Where(n => !string.IsNullOrEmpty(n)).ToList();
+        
         var marketPhotos = storeNames.Count > 0
-            ? await _dbContext.Markets.AsNoTracking()
+            ? (await _dbContext.Markets.AsNoTracking()
                 .Where(x => storeNames.Contains(x.Name))
                 .Select(x => new { x.Name, x.PhotoUrl })
-                .ToListAsync(cancellationToken)
+                .ToListAsync(cancellationToken)).Cast<dynamic>().ToList()
             : new List<dynamic>();
 
         return orders.Select(order =>
