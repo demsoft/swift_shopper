@@ -262,8 +262,16 @@ public class DbSwiftShopperService : ISwiftShopperService
             {
                 // No shopper yet — estimate from original request items
                 var request = allRequests.FirstOrDefault(r => r.Id == order.RequestId);
-                estimatedTotal = request?.Items.Sum(i => i.Price * i.Quantity) ?? 0m;
-                totalItemsCount = request?.Items.Count ?? 0;
+                if (request?.Items != null && request.Items.Count > 0)
+                {
+                    estimatedTotal = request.Items.Sum(i => i.Price * i.Quantity);
+                    totalItemsCount = request.Items.Count;
+                }
+                else
+                {
+                    estimatedTotal = 0m;
+                    totalItemsCount = 0;
+                }
             }
 
             return new ActiveOrderDto
