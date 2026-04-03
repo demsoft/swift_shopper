@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../chat/presentation/chat_screen.dart';
+import '../../shared/data/swift_shopper_repository.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
 import 'scan_item_sheet.dart';
@@ -173,17 +174,44 @@ Widget _buildBackHeader(BuildContext context) {
 }
 
 // ── Main job view ────────────────────────────────────────────────────────────
-class _ActiveJobView extends StatelessWidget {
+class _ActiveJobView extends ConsumerStatefulWidget {
   const _ActiveJobView({required this.job});
 
   final ActiveJobData job;
+
+  @override
+  ConsumerState<_ActiveJobView> createState() => _ActiveJobViewState();
+}
+
+class _ActiveJobViewState extends ConsumerState<_ActiveJobView> {
+  bool _finishing = false;
+  String? _finishError;
 
   String _fmt(double v) => v
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
+  Future<void> _finishShopping() async {
+    setState(() {
+      _finishing = true;
+      _finishError = null;
+    });
+    try {
+      final repo = ref.read(swiftShopperRepositoryProvider);
+      await repo.finishShopping(orderId: widget.job.orderId);
+      ref.invalidate(activeJobProvider);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() {
+        _finishError = e.toString();
+        _finishing = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final job = widget.job;
     final foundCount = job.items.where((i) => i.status == 1).length;
     final totalCount = job.items.length;
     final progress = totalCount > 0 ? foundCount / totalCount : 0.0;
@@ -280,16 +308,29 @@ class _ActiveJobView extends StatelessWidget {
                   ),
                 ],
               ),
+              if (_finishError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _finishError!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFE53935)),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                  label: const Text(
-                    'Finish Shopping',
-                    style: TextStyle(
+                  onPressed: _finishing ? null : _finishShopping,
+                  icon: _finishing
+                      ? const SizedBox(
+                          width: 18, height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                        )
+                      : const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                  label: Text(
+                    _finishing ? 'Finishing...' : 'Finish Shopping',
+                    style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white,
                     ),
                   ),
@@ -515,7 +556,12 @@ class _CustomerRowState extends State<_CustomerRow> {
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => ChatScreen(shopperName: widget.customerName, shopperRole: 'CUSTOMER'),
+                builder: (_) => ChatScreen(
+                        orderId: widget.orderId,
+                        otherPersonName: widget.customerName,
+                        otherPersonRole: 'CUSTOMER',
+                        otherPersonAvatarUrl: widget.customerAvatarUrl,
+                      ),
               ),
             ),
             child: Container(

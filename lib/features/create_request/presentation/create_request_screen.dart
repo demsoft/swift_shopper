@@ -156,10 +156,10 @@ class _Header extends ConsumerWidget {
               size: 22,
             ),
           ),
-          const SizedBox(width: 16),
           const Expanded(
             child: Text(
               'New Order',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -167,24 +167,7 @@ class _Header extends ConsumerWidget {
               ),
             ),
           ),
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFD9DDD7),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Image.asset(
-              'assets/images/account.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 26,
-              ),
-            ),
-          ),
+          const SizedBox(width: 38),
         ],
       ),
     );

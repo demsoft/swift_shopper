@@ -2,46 +2,48 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/app_env.dart';
-import '../../home/models/home_models.dart';
 import '../../shared/data/swift_shopper_repository.dart';
 import '../data/chat_realtime_provider.dart';
 import '../models/chat_message.dart';
 
 class ChatState {
   const ChatState({
-    required this.shopperName,
+    required this.otherPersonName,
     required this.status,
     required this.messages,
     required this.isRealtimeConnected,
+    this.isSending = false,
   });
 
-  final String shopperName;
+  final String otherPersonName;
   final String status;
   final List<ChatMessage> messages;
   final bool isRealtimeConnected;
+  final bool isSending;
 
   ChatState copyWith({
-    String? shopperName,
+    String? otherPersonName,
     String? status,
     List<ChatMessage>? messages,
     bool? isRealtimeConnected,
+    bool? isSending,
   }) {
     return ChatState(
-      shopperName: shopperName ?? this.shopperName,
+      otherPersonName: otherPersonName ?? this.otherPersonName,
       status: status ?? this.status,
       messages: messages ?? this.messages,
       isRealtimeConnected: isRealtimeConnected ?? this.isRealtimeConnected,
+      isSending: isSending ?? this.isSending,
     );
   }
 }
 
-class ChatNotifier extends AsyncNotifier<ChatState> {
+class ChatNotifier extends FamilyAsyncNotifier<ChatState, String> {
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   StreamSubscription<bool>? _connectionSubscription;
 
   @override
-  Future<ChatState> build() async {
+  Future<ChatState> build(String orderId) async {
     final repository = ref.read(swiftShopperRepositoryProvider);
     final realtimeService = ref.read(signalRChatServiceProvider);
 
@@ -54,154 +56,76 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
     _messageSubscription?.cancel();
     _messageSubscription = realtimeService.messages.listen((payload) {
       final current = state.valueOrNull;
-      if (current == null) {
-        return;
-      }
+      if (current == null) return;
 
       final message = repository.mapChatMessage(payload);
-      if (current.messages.any((item) => item.id == message.id)) {
-        return;
-      }
+      if (current.messages.any((m) => m.id == message.id)) return;
 
       state = AsyncData(
-        current.copyWith(
-          messages: _ensurePriceCard([...current.messages, message]),
-        ),
+        current.copyWith(messages: [...current.messages, message]),
       );
     });
 
     _connectionSubscription?.cancel();
     _connectionSubscription = realtimeService.connectionStatus.listen((isLive) {
       final current = state.valueOrNull;
-      if (current == null || current.isRealtimeConnected == isLive) {
-        return;
-      }
-
+      if (current == null || current.isRealtimeConnected == isLive) return;
       state = AsyncData(current.copyWith(isRealtimeConnected: isLive));
     });
 
-    OrderTrackingData? tracking;
     List<ChatMessage> messages = const [];
-
     try {
-      tracking = await repository.getOrderTracking(orderId: AppEnv.orderId);
+      messages = await repository.getChatMessages(orderId: orderId);
     } catch (_) {}
 
     try {
-      messages = await repository.getChatMessages();
-    } catch (_) {}
-
-    try {
-      await realtimeService.connect(orderId: AppEnv.orderId);
+      await realtimeService.connect(orderId: orderId);
     } catch (_) {}
 
     return ChatState(
-      shopperName: tracking?.shopperName ?? 'Amina (Shopper)',
-      status: tracking?.currentStatus ?? 'Shopping',
-      messages: _ensurePriceCard(messages),
+      otherPersonName: '',
+      status: '',
+      messages: messages,
       isRealtimeConnected: realtimeService.isConnected,
     );
   }
 
   Future<void> sendTextMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) {
-      return;
-    }
+    if (trimmed.isEmpty) return;
+
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    state = AsyncData(current.copyWith(isSending: true));
 
     try {
       final repository = ref.read(swiftShopperRepositoryProvider);
       final realtimeService = ref.read(signalRChatServiceProvider);
-      await repository.sendTextMessage(text: trimmed);
+      await repository.sendTextMessage(text: trimmed, orderId: arg);
 
       if (!realtimeService.isConnected) {
-        final current = state.valueOrNull;
-        if (current == null) {
-          return;
-        }
-
-        final refreshed = await repository.getChatMessages();
+        final refreshed = await repository.getChatMessages(orderId: arg);
         state = AsyncData(
-          current.copyWith(messages: _ensurePriceCard(refreshed)),
+          current.copyWith(messages: refreshed, isSending: false),
         );
+      } else {
+        state = AsyncData(current.copyWith(isSending: false));
       }
-    } catch (_) {}
+    } catch (_) {
+      state = AsyncData(current.copyWith(isSending: false));
+    }
   }
 
-  Future<void> respondToPriceAction(String actionLabel) async {
-    final payload = _decisionPayload(actionLabel);
-
+  Future<void> sendPriceDecision(int decision) async {
     try {
       final repository = ref.read(swiftShopperRepositoryProvider);
-      final realtimeService = ref.read(signalRChatServiceProvider);
-      await repository.sendPriceDecision(
-        decision: payload.decision,
-        note: payload.note,
-      );
-
-      if (!realtimeService.isConnected) {
-        final current = state.valueOrNull;
-        if (current == null) {
-          return;
-        }
-
-        final refreshed = await repository.getChatMessages(
-          orderId: AppEnv.orderId,
-        );
-        state = AsyncData(
-          current.copyWith(messages: _ensurePriceCard(refreshed)),
-        );
-      }
+      await repository.sendPriceDecision(decision: decision, orderId: arg);
     } catch (_) {}
   }
-
-  List<ChatMessage> _ensurePriceCard(List<ChatMessage> messages) {
-    final hasPriceCard = messages.any(
-      (item) => item.type == MessageType.priceCard,
-    );
-    if (hasPriceCard) {
-      return messages;
-    }
-
-    return [
-      ...messages,
-      ChatMessage(
-        id: 'local-price-card',
-        sender: SenderType.shopper,
-        type: MessageType.priceCard,
-        time: DateTime.now(),
-        priceCardData: const PriceCardData(
-          itemName: 'Organic Olive Oil (500ml)',
-          imageUrl:
-              'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=900',
-          price: 14.99,
-        ),
-      ),
-    ];
-  }
-
-  _PriceDecisionPayload _decisionPayload(String actionLabel) {
-    final text = actionLabel.toLowerCase();
-    if (text.contains('accept')) {
-      return const _PriceDecisionPayload(decision: 1, note: 'Accepted');
-    }
-    if (text.contains('reject')) {
-      return const _PriceDecisionPayload(decision: 3, note: 'Rejected');
-    }
-    return const _PriceDecisionPayload(
-      decision: 2,
-      note: 'Can we lower the price?',
-    );
-  }
 }
 
-class _PriceDecisionPayload {
-  const _PriceDecisionPayload({required this.decision, this.note});
-
-  final int decision;
-  final String? note;
-}
-
-final chatProvider = AsyncNotifierProvider<ChatNotifier, ChatState>(
+final chatProvider =
+    AsyncNotifierProviderFamily<ChatNotifier, ChatState, String>(
   ChatNotifier.new,
 );

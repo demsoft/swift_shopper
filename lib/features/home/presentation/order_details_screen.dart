@@ -10,13 +10,27 @@ import '../../chat/presentation/chat_screen.dart';
 // item status ints from backend OrderItemStatus enum
 // 0 = Pending, 1 = Found, 2 = Unavailable
 
-class OrderDetailsScreen extends ConsumerWidget {
+class OrderDetailsScreen extends ConsumerStatefulWidget {
   const OrderDetailsScreen({super.key, required this.order});
 
   final ActiveOrder order;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(orderItemsProvider(widget.order.orderId));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final order = widget.order;
     final trackingAsync = ref.watch(orderTrackingProvider(order.orderId));
     final user = ref.watch(authProvider).user;
 
@@ -160,57 +174,18 @@ class OrderDetailsScreen extends ConsumerWidget {
               size: 22,
             ),
           ),
-          const SizedBox(width: 12),
           const Expanded(
             child: Text(
               'Order Status',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 22,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primary,
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => ChatScreen(
-                  shopperName: shopperName.isNotEmpty ? shopperName : 'Shopper',
-                ),
-              ),
-            ),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.chat_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF2A3A30),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                ? Image.network(
-                    user.avatarUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.person, color: Colors.white, size: 22),
-                  )
-                : const Icon(Icons.person, color: Colors.white, size: 22),
-          ),
+          const SizedBox(width: 34),
         ],
       ),
     );
@@ -476,7 +451,12 @@ class OrderDetailsScreen extends ConsumerWidget {
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => ChatScreen(shopperName: shopperName),
+                builder: (_) => ChatScreen(
+                        orderId: widget.order.orderId,
+                        otherPersonName: shopperName,
+                        otherPersonRole: 'EXPERT SHOPPER',
+                        otherPersonAvatarUrl: shopperAvatarUrl,
+                      ),
               ),
             ),
             child: Container(
@@ -780,19 +760,43 @@ class _OrderItemCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // icon or photo
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 60,
-              height: 60,
-              child: item.photoUrl != null && item.photoUrl!.isNotEmpty
-                  ? Image.network(
-                      item.photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _iconBox(iconBg, iconColor),
-                    )
-                  : _iconBox(iconBg, iconColor),
+          // icon or tappable photo
+          GestureDetector(
+            onTap: item.photoUrl != null && item.photoUrl!.isNotEmpty
+                ? () => _openPhoto(context, item.photoUrl!)
+                : null,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: item.photoUrl != null && item.photoUrl!.isNotEmpty
+                        ? Image.network(
+                            item.photoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _iconBox(iconBg, iconColor),
+                          )
+                        : _iconBox(iconBg, iconColor),
+                  ),
+                ),
+                if (item.photoUrl != null && item.photoUrl!.isNotEmpty)
+                  Positioned(
+                    bottom: -4,
+                    right: -4,
+                    child: Container(
+                      width: 20, height: 20,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded,
+                          color: Colors.white, size: 12),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(width: 14),
@@ -894,10 +898,95 @@ class _OrderItemCard extends StatelessWidget {
     );
   }
 
+  void _openPhoto(BuildContext context, String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _PhotoViewScreen(url: url, itemName: item.name),
+      ),
+    );
+  }
+
   Widget _iconBox(Color bg, Color iconColor) {
     return Container(
       color: bg,
       child: Icon(Icons.shopping_basket_rounded, color: iconColor, size: 28),
+    );
+  }
+}
+
+// ===========================================================================
+// FULL-SCREEN PHOTO VIEWER
+// ===========================================================================
+class _PhotoViewScreen extends StatelessWidget {
+  const _PhotoViewScreen({required this.url, required this.itemName});
+
+  final String url;
+  final String itemName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Pinch-to-zoom image
+          Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.broken_image_rounded,
+                          color: Colors.white54, size: 56),
+                      SizedBox(height: 12),
+                      Text('Could not load photo',
+                          style: TextStyle(color: Colors.white54)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Header
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      itemName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
