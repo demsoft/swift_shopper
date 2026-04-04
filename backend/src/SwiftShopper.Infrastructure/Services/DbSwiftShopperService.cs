@@ -230,21 +230,75 @@ public class DbSwiftShopperService : ISwiftShopperService
     public async Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(
         string customerId, CancellationToken cancellationToken)
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(customerId))
-            {
-                return Array.Empty<ActiveOrderDto>();
-            }
+        if (string.IsNullOrWhiteSpace(customerId))
+            return Array.Empty<ActiveOrderDto>();
 
-            // For now, just return empty list - database might be unavailable
-            // This prevents the 500 error and allows the app to function
+        // Find all request IDs belonging to this customer
+        var requestIds = await _dbContext.ShoppingRequests.AsNoTracking()
+            .Where(r => r.CustomerId == customerId)
+            .Select(r => r.Id)
+            .ToListAsync(cancellationToken);
+
+        if (requestIds.Count == 0)
             return Array.Empty<ActiveOrderDto>();
-        }
-        catch
+
+        // Active = not yet Delivered (status < 5) and not Cancelled (6)
+        var orders = await _dbContext.Orders.AsNoTracking()
+            .Where(o => requestIds.Contains(o.RequestId)
+                        && (int)o.Status < 5)
+            .OrderByDescending(o => o.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        if (orders.Count == 0)
+            return Array.Empty<ActiveOrderDto>();
+
+        // Gather request data for item counts and estimated totals
+        var activeRequestIds = orders.Select(o => o.RequestId).Distinct().ToList();
+        var requests = await _dbContext.ShoppingRequests.AsNoTracking()
+            .Where(r => activeRequestIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, cancellationToken);
+
+        // Gather item counts per order
+        var orderIds = orders.Select(o => o.Id).ToList();
+        var itemCounts = await _dbContext.OrderItems.AsNoTracking()
+            .Where(i => orderIds.Contains(i.OrderId))
+            .GroupBy(i => i.OrderId)
+            .Select(g => new { OrderId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.OrderId, x => x.Count, cancellationToken);
+
+        // Resolve store photos
+        var storeNames = orders.Select(o => o.StoreName).Distinct().ToList();
+        var markets = await _dbContext.Markets.AsNoTracking()
+            .Where(m => storeNames.Contains(m.Name))
+            .ToDictionaryAsync(m => m.Name, cancellationToken);
+
+        return orders.Select(o =>
         {
-            return Array.Empty<ActiveOrderDto>();
-        }
+            requests.TryGetValue(o.RequestId, out var req);
+            itemCounts.TryGetValue(o.Id, out var totalItems);
+            markets.TryGetValue(o.StoreName, out var market);
+
+            var estimatedTotal = req?.Budget ?? 0m;
+
+            return new ActiveOrderDto
+            {
+                Id = o.Id,
+                RequestId = o.RequestId,
+                ShopperName = o.ShopperName,
+                StoreName = o.StoreName,
+                StoreAddress = o.StoreAddress,
+                Status = o.Status,
+                ItemsSubtotal = o.ItemsSubtotal,
+                EstimatedItemsTotal = estimatedTotal,
+                DeliveryFee = o.DeliveryFee,
+                ServiceFee = o.ServiceFee,
+                PickedItemsCount = o.PickedItemsCount,
+                TotalItemsCount = totalItems,
+                EstimatedDeliveryMinutes = o.EstimatedDeliveryMinutes,
+                UpdatedAt = o.UpdatedAt,
+                StorePhotoUrl = market?.PhotoUrl,
+            };
+        }).ToList();
     }
 
     public async Task<bool> IsOrderOwnedByCustomerAsync(

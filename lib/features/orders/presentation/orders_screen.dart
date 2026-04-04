@@ -676,11 +676,6 @@ class _ShopperOrderHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
-    final fullName = (user?.fullName ?? '').trim();
-    final firstName =
-        fullName.isEmpty ? 'User' : fullName.split(RegExp(r'\s+')).first;
-
     final jobAsync = ref.watch(activeJobProvider);
     final historyAsync = ref.watch(shopperOrderHistoryProvider);
 
@@ -688,24 +683,42 @@ class _ShopperOrderHistoryScreenState
     final supermarketsAsync = ref.watch(supermarketsProvider);
     final openMarketsAsync = ref.watch(openMarketsProvider);
 
+    final canPop = Navigator.of(context).canPop();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async {
-            ref.invalidate(activeJobProvider);
-            ref.invalidate(shopperOrderHistoryProvider);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: [
-              // ── Header ──────────────────────────────────────────────
-              _ShopperTopHeader(
-                firstName: firstName,
-                avatarUrl: user?.avatarUrl,
-              ),
-              const SizedBox(height: 20),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF5F5F5),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'My Orders',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0D1512),
+          ),
+        ),
+        centerTitle: true,
+        leading: canPop
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Color(0xFF0D1512), size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+      ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          ref.invalidate(activeJobProvider);
+          ref.invalidate(shopperOrderHistoryProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            const SizedBox(height: 8),
 
               // ── Tab bar ──────────────────────────────────────────────
               _TabRow(
@@ -841,69 +854,8 @@ class _ShopperOrderHistoryScreenState
             ],
           ),
         ),
-      ),
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// Shopper top header
-// ---------------------------------------------------------------------------
-class _ShopperTopHeader extends StatelessWidget {
-  const _ShopperTopHeader({required this.firstName, this.avatarUrl});
-
-  final String firstName;
-  final String? avatarUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(shape: BoxShape.circle),
-          clipBehavior: Clip.antiAlias,
-          child: avatarUrl != null && avatarUrl!.isNotEmpty
-              ? Image.network(avatarUrl!, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _avatarPlaceholder())
-              : _avatarPlaceholder(),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            firstName,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: const Icon(Icons.history_rounded,
-              color: AppColors.textSecondary, size: 20),
-        ),
-      ],
-    );
-  }
-
-  Widget _avatarPlaceholder() => Container(
-        color: AppColors.primary,
-        child: const Icon(Icons.person, color: Colors.white, size: 26),
-      );
 }
 
 // ---------------------------------------------------------------------------

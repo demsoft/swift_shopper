@@ -22,7 +22,15 @@ class ReviewRequestScreen extends ConsumerWidget {
   final String storeLocation;
   final String? storeImagePath;
 
-  static const double _serviceFee = 1000;
+  static const double _serviceFee = 1500;
+  static const double _shopperFeeRate = 0.12;
+  static const double _shopperFeeMin = 1000;
+  static const double _shopperFeeMax = 7000;
+
+  double _shopperFee(double itemsTotal) {
+    final fee = itemsTotal * _shopperFeeRate;
+    return fee.clamp(_shopperFeeMin, _shopperFeeMax);
+  }
 
   String _formatAmount(double amount) {
     final formatted = amount
@@ -41,15 +49,22 @@ class ReviewRequestScreen extends ConsumerWidget {
 
     if (itemsSnapshot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one item before submitting.')),
+        const SnackBar(
+          content: Text('Add at least one item before submitting.'),
+        ),
       );
       return;
     }
 
     try {
-      await ref.read(createRequestProvider.notifier).submitRequest(
+      final shopperFee = _shopperFee(budget);
+      final totalBudget = budget + shopperFee + _serviceFee;
+
+      await ref
+          .read(createRequestProvider.notifier)
+          .submitRequest(
             preferredStore: storeName,
-            budget: budget + _serviceFee,
+            budget: totalBudget,
             deliveryAddress: storeLocation,
             deliveryNotes: deliveryNotes,
           );
@@ -59,15 +74,17 @@ class ReviewRequestScreen extends ConsumerWidget {
       ref.invalidate(recentRequestsProvider);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => OrderSuccessScreen(
-            orderType: marketType == MarketType.supermarket
-                ? 'Supermarket Order'
-                : 'Open Market Order',
-            totalAmount: budget + _serviceFee,
-            storeName: storeName,
-            storeLocation: storeLocation,
-            items: itemsSnapshot,
-          ),
+          builder:
+              (_) => OrderSuccessScreen(
+                orderType:
+                    marketType == MarketType.supermarket
+                        ? 'Supermarket Order'
+                        : 'Open Market Order',
+                totalAmount: totalBudget,
+                storeName: storeName,
+                storeLocation: storeLocation,
+                items: itemsSnapshot,
+              ),
         ),
       );
     } catch (e) {
@@ -85,7 +102,8 @@ class ReviewRequestScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(createRequestProvider).items;
     final isSubmitting = ref.watch(createRequestProvider).isSubmitting;
-    final total = budget + _serviceFee;
+    final shopperFee = _shopperFee(budget);
+    final total = budget + shopperFee + _serviceFee;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2EF),
@@ -223,6 +241,19 @@ class ReviewRequestScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
                           _FeeRow(
+                            label: 'Personal Shopper Fee (12%)',
+                            amount: _formatAmount(shopperFee),
+                            amountColor: const Color(0xFFD4860A),
+                          ),
+                          const SizedBox(height: 12),
+                          _FeeRow(
+                            label: 'Delivery Fee',
+                            amount: 'Calculated at pickup',
+                            amountColor: const Color(0xFF9A9C97),
+                            isNote: true,
+                          ),
+                          const SizedBox(height: 12),
+                          _FeeRow(
                             label: 'Service Fee',
                             amount: _formatAmount(_serviceFee),
                             amountColor: const Color(0xFFD4860A),
@@ -304,10 +335,7 @@ class ReviewRequestScreen extends ConsumerWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Container(
-                                width: 5,
-                                color: AppColors.primary,
-                              ),
+                              Container(width: 5, color: AppColors.primary),
                               Expanded(
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
@@ -343,9 +371,9 @@ class ReviewRequestScreen extends ConsumerWidget {
                             'Your payment is held in escrow until delivery is confirmed.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: const Color(0xFF5A5C56).withValues(
-                                alpha: 0.85,
-                              ),
+                              color: const Color(
+                                0xFF5A5C56,
+                              ).withValues(alpha: 0.85),
                             ),
                           ),
                         ),
@@ -379,23 +407,24 @@ class ReviewRequestScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(29),
                   ),
                   alignment: Alignment.center,
-                  child: isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
+                  child:
+                      isSubmitting
+                          ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text(
+                            'Confirm & Post Request',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        )
-                      : const Text(
-                          'Confirm & Post Request',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
                 ),
               ),
             ),
@@ -455,15 +484,15 @@ class _DestinationCard extends StatelessWidget {
             if (imagePath != null)
               (imagePath!.startsWith('http'))
                   ? Image.network(
-                      imagePath!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _StorePlaceholder(),
-                    )
+                    imagePath!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _StorePlaceholder(),
+                  )
                   : Image.asset(
-                      imagePath!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _StorePlaceholder(),
-                    )
+                    imagePath!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _StorePlaceholder(),
+                  )
             else
               _StorePlaceholder(),
             // Dark gradient overlay at bottom
@@ -640,11 +669,13 @@ class _FeeRow extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.amountColor,
+    this.isNote = false,
   });
 
   final String label;
   final String amount;
   final Color amountColor;
+  final bool isNote;
 
   @override
   Widget build(BuildContext context) {
@@ -652,17 +683,15 @@ class _FeeRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF5A5C56),
-          ),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF5A5C56)),
         ),
         const Spacer(),
         Text(
           amount,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+            fontSize: isNote ? 12 : 15,
+            fontWeight: isNote ? FontWeight.w400 : FontWeight.w700,
+            fontStyle: isNote ? FontStyle.italic : FontStyle.normal,
             color: amountColor,
           ),
         ),

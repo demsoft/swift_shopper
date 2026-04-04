@@ -1223,7 +1223,7 @@ class _ActiveShoppingSection extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 // Shopper: Request Card
 // ---------------------------------------------------------------------------
-class _RequestCard extends StatelessWidget {
+class _RequestCard extends ConsumerWidget {
   const _RequestCard({required this.request, this.onTap});
   final AvailableRequestData request;
   final VoidCallback? onTap;
@@ -1231,10 +1231,33 @@ class _RequestCard extends StatelessWidget {
   String _fmtBudget(double v) =>
       '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 
+  Widget _storeIconBox() => Container(
+        width: 56,
+        height: 56,
+        color: AppColors.accentSurface,
+        child: const Icon(Icons.storefront_rounded, color: AppColors.primaryDark, size: 28),
+      );
+
+  String? _resolvePhotoUrl(WidgetRef ref) {
+    final storeName = request.preferredStore.toLowerCase();
+    final supermarkets = ref.watch(supermarketsProvider).valueOrNull ?? [];
+    final openMarkets = ref.watch(openMarketsProvider).valueOrNull ?? [];
+    final all = [...supermarkets, ...openMarkets];
+    try {
+      return all.firstWhere(
+        (m) => m.name.toLowerCase().contains(storeName) ||
+               storeName.contains(m.name.toLowerCase()),
+      ).photoUrl;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final preview = request.itemNames.take(3).join(', ');
+    final photoUrl = _resolvePhotoUrl(ref);
 
     return GestureDetector(
       onTap: onTap,
@@ -1254,18 +1277,19 @@ class _RequestCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon box
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.accentSurface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: AppColors.primaryDark,
-              size: 28,
+          // Store photo / icon box
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: photoUrl != null && photoUrl.isNotEmpty
+                  ? Image.network(
+                      photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _storeIconBox(),
+                    )
+                  : _storeIconBox(),
             ),
           ),
           const SizedBox(width: 12),
