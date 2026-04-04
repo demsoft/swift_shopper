@@ -46,6 +46,10 @@ class RecentRequest {
     required this.date,
     required this.itemsCount,
     required this.status,
+    this.budget = 0,
+    this.itemsSubtotal = 0,
+    this.deliveryFee = 0,
+    this.serviceFee = 0,
   });
 
   final String orderId;
@@ -54,6 +58,10 @@ class RecentRequest {
   final String date;
   final int itemsCount;
   final String status;
+  final double budget;
+  final double itemsSubtotal;
+  final double deliveryFee;
+  final double serviceFee;
 }
 
 // ── Active Job (for shopper) ────────────────────────────────────────────

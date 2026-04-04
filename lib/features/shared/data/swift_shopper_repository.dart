@@ -173,6 +173,10 @@ class SwiftShopperRepository {
         date: _friendlyDate(map['createdAt']?.toString()),
         itemsCount: (map['itemsCount'] as num?)?.toInt() ?? 0,
         status: statusLabel,
+        budget: (map['budget'] as num?)?.toDouble() ?? 0,
+        itemsSubtotal: (map['itemsSubtotal'] as num?)?.toDouble() ?? 0,
+        deliveryFee: (map['deliveryFee'] as num?)?.toDouble() ?? 0,
+        serviceFee: (map['serviceFee'] as num?)?.toDouble() ?? 0,
       );
     }).toList();
   }

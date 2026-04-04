@@ -187,6 +187,12 @@ class _CustomerOrdersScreen extends ConsumerWidget {
                                 title: request.title,
                                 store: request.store,
                                 status: request.status,
+                                estimatedItemsTotal: request.itemsSubtotal > 0
+                                    ? request.itemsSubtotal
+                                    : request.budget,
+                                itemsSubtotal: request.itemsSubtotal,
+                                deliveryFee: request.deliveryFee,
+                                serviceFee: request.serviceFee,
                               );
                               Navigator.of(context).push(MaterialPageRoute<void>(
                                 builder: (_) => OrderDetailsScreen(order: order),

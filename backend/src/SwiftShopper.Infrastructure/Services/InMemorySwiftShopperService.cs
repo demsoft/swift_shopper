@@ -299,10 +299,14 @@ public class InMemorySwiftShopperService : ISwiftShopperService
                 Id = r.Id,
                 PreferredStore = r.PreferredStore,
                 DeliveryAddress = r.DeliveryAddress,
+                Budget = r.Budget,
                 ItemsCount = r.Items.Count,
                 CreatedAt = r.CreatedAt,
                 OrderId = order?.Id,
                 OrderStatus = order != null ? (int)order.Status : null,
+                ItemsSubtotal = order?.ItemsSubtotal,
+                DeliveryFee = order?.DeliveryFee,
+                ServiceFee = order?.ServiceFee,
             };
         }).ToList();
 
