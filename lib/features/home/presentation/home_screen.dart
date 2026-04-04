@@ -9,6 +9,7 @@ import '../../create_request/presentation/create_request_screen.dart';
 import 'order_details_screen.dart';
 import 'active_job_screen.dart';
 import 'request_detail_screen.dart';
+import 'profile_drawer.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -285,33 +286,36 @@ class _TopHeader extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.primaryDark,
+        GestureDetector(
+          onTap: () => showProfileDrawer(context),
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primaryDark,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: avatarUrl != null && avatarUrl!.isNotEmpty
+                ? Image.network(
+                    avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  )
+                : Image.asset(
+                    'assets/images/account.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: avatarUrl != null && avatarUrl!.isNotEmpty
-              ? Image.network(
-                  avatarUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                )
-              : Image.asset(
-                  'assets/images/account.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
         ),
         const SizedBox(width: 10),
         Expanded(
