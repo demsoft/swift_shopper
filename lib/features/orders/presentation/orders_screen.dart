@@ -576,87 +576,136 @@ class _ActiveOrderCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Customer – Recent Request Card
 // ---------------------------------------------------------------------------
-class _RecentRequestCard extends StatelessWidget {
+class _RecentRequestCard extends ConsumerWidget {
   const _RecentRequestCard({required this.request, required this.onTap});
 
   final RecentRequest request;
   final VoidCallback onTap;
 
+  // Status label → badge colour pair
+  static _StatusStyle _statusStyle(String status) {
+    switch (status) {
+      case 'Accepted':  return const _StatusStyle(Color(0xFFE8F5E9), Color(0xFF2E7D32));
+      case 'Shopping':  return const _StatusStyle(Color(0xFFE3F2FD), Color(0xFF1565C0));
+      case 'Ready':     return const _StatusStyle(Color(0xFFFFF8E1), Color(0xFFF57F17));
+      case 'Delivering':return const _StatusStyle(Color(0xFFE8F5E9), AppColors.primary);
+      case 'Delivered': return const _StatusStyle(Color(0xFFF5F5F5), Color(0xFF757575));
+      case 'Cancelled': return const _StatusStyle(Color(0xFFFFEBEE), Color(0xFFC62828));
+      default:          return const _StatusStyle(Color(0xFFE6F4EA), AppColors.primary); // Submitted / Pending
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+
+    // Resolve store photo: direct URL first, then match by name in loaded markets
+    String? photoUrl = request.storePhotoUrl;
+    if (photoUrl == null || photoUrl.isEmpty) {
+      void tryMarkets(List<MarketData> markets) {
+        for (final m in markets) {
+          if (m.name.toLowerCase() == request.store.toLowerCase() &&
+              m.photoUrl != null &&
+              m.photoUrl!.isNotEmpty) {
+            photoUrl = m.photoUrl;
+            return;
+          }
+        }
+      }
+      ref.watch(supermarketsProvider).whenData(tryMarkets);
+      if (photoUrl == null) ref.watch(openMarketsProvider).whenData(tryMarkets);
+    }
+
+    final style = _statusStyle(request.status);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F2EF),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
               borderRadius: BorderRadius.circular(12),
+              child: photoUrl != null && photoUrl!.isNotEmpty
+                  ? Image.network(
+                      photoUrl!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _fallbackIcon(),
+                    )
+                  : _fallbackIcon(),
             ),
-            child: const Icon(Icons.shopping_bag_rounded, color: AppColors.textSecondary, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  request.title,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    request.title,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${request.date} • ${request.itemsCount} item${request.itemsCount == 1 ? '' : 's'}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                  const SizedBox(height: 2),
+                  Text(
+                    '${request.date} • ${request.itemsCount} item${request.itemsCount == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE6F4EA),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'SUBMITTED',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
-                letterSpacing: 0.5,
+                ],
               ),
             ),
-          ),
-        ],
-      ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: style.bg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                request.status.toUpperCase(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: style.fg,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _fallbackIcon() => Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(color: Color(0xFFF0F2EF)),
+        child: const Icon(Icons.shopping_bag_rounded,
+            color: AppColors.textSecondary, size: 28),
+      );
+}
+
+class _StatusStyle {
+  const _StatusStyle(this.bg, this.fg);
+  final Color bg;
+  final Color fg;
 }
 
 // ===========================================================================

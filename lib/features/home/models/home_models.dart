@@ -52,6 +52,7 @@ class RecentRequest {
     this.itemsSubtotal = 0,
     this.deliveryFee = 0,
     this.serviceFee = 0,
+    this.storePhotoUrl,
   });
 
   final String orderId;
@@ -64,6 +65,7 @@ class RecentRequest {
   final double itemsSubtotal;
   final double deliveryFee;
   final double serviceFee;
+  final String? storePhotoUrl;
 }
 
 // ── Active Job (for shopper) ────────────────────────────────────────────

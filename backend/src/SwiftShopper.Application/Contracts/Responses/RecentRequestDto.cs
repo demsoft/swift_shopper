@@ -14,4 +14,5 @@ public class RecentRequestDto
     public decimal? ItemsSubtotal { get; init; }
     public decimal? DeliveryFee { get; init; }
     public decimal? ServiceFee { get; init; }
+    public string? StorePhotoUrl { get; init; }
 }

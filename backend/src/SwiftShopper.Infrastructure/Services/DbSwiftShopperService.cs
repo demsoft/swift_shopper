@@ -205,9 +205,22 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Where(o => requestIds.Contains(o.RequestId))
             .ToDictionaryAsync(o => o.RequestId, cancellationToken);
 
+        // Collect store names so we can batch-look up market photos
+        var storeNames = orders.Values.Select(o => o.StoreName)
+            .Union(requests.Select(r => r.PreferredStore))
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var marketPhotos = await _dbContext.Markets.AsNoTracking()
+            .Where(m => storeNames.Contains(m.Name))
+            .ToDictionaryAsync(m => m.Name, m => m.PhotoUrl, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
         return requests.Select(r =>
         {
             orders.TryGetValue(r.Id, out var order);
+            var storeName = order?.StoreName ?? r.PreferredStore;
+            marketPhotos.TryGetValue(storeName, out var photoUrl);
             return new RecentRequestDto
             {
                 Id = r.Id,
@@ -221,6 +234,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 ItemsSubtotal = order?.ItemsSubtotal,
                 DeliveryFee = order?.DeliveryFee,
                 ServiceFee = order?.ServiceFee,
+                StorePhotoUrl = photoUrl,
             };
         }).ToList();
     }

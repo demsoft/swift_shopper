@@ -178,6 +178,7 @@ class SwiftShopperRepository {
         itemsSubtotal: (map['itemsSubtotal'] as num?)?.toDouble() ?? 0,
         deliveryFee: (map['deliveryFee'] as num?)?.toDouble() ?? 0,
         serviceFee: (map['serviceFee'] as num?)?.toDouble() ?? 0,
+        storePhotoUrl: map['storePhotoUrl']?.toString(),
       );
     }).toList();
   }
