@@ -137,7 +137,7 @@ export default function Customers() {
             <thead>
               <tr className="bg-surface-container-low">
                 {['Customer', 'Email Address', 'Orders', 'Last Order', 'Total Spend', 'Membership', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} className={`px-6 py-4 text-[0.75rem] font-bold uppercase tracking-[0.05em] text-secondary ${i === 2 ? 'text-center' : ''}`}>
+                  <th key={h} className={`px-6 py-4 text-xs font-bold uppercase tracking-[0.05em] text-secondary ${i === 2 ? 'text-center' : ''}`}>
                     {h}
                   </th>
                 ))}
@@ -167,13 +167,13 @@ export default function Customers() {
                       {c.avatarUrl ? (
                         <img src={c.avatarUrl} alt={c.fullName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                       ) : (
-                        <div className={`w-10 h-10 rounded-full ${c.avatarBg} flex items-center justify-center ${c.avatarText} font-bold text-sm flex-shrink-0`}>
+                        <div className={`w-10 h-10 rounded-full ${c.avatarBg} flex items-center justify-center ${c.avatarText} font-bold text-xs flex-shrink-0`}>
                           {c.initials}
                         </div>
                       )}
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-on-surface">{c.fullName}</span>
-                        <span className="text-[0.7rem] text-secondary font-medium">ID: {c.customerId.slice(-6).toUpperCase()}</span>
+                        <span className="text-xs text-secondary">ID: {c.customerId.slice(-6).toUpperCase()}</span>
                       </div>
                     </div>
                   </td>

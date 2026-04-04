@@ -554,7 +554,8 @@ public class DbSwiftShopperService : ISwiftShopperService
                 x.ShopperId == shopperId &&
                 x.Status != OrderStatus.Delivered &&
                 x.Status != OrderStatus.Pending)
-            .OrderByDescending(x => x.UpdatedAt)
+            .OrderByDescending(x => (int)x.Status)
+            .ThenByDescending(x => x.UpdatedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (order is null) return null;

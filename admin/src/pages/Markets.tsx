@@ -450,7 +450,7 @@ export default function Markets() {
                       {['Market Name', 'Type', 'Location', 'Status', 'Today', 'Categories', 'Actions'].map((h, i) => (
                         <th
                           key={h}
-                          className={`px-6 py-4 text-[11px] font-bold text-on-secondary-container uppercase tracking-widest ${i === 6 ? 'text-right' : ''}`}
+                          className={`px-6 py-4 text-xs font-bold text-secondary uppercase tracking-[0.05em] ${i === 6 ? 'text-right' : ''}`}
                         >
                           {h}
                         </th>
@@ -476,7 +476,7 @@ export default function Markets() {
                     ) : filtered.map((m) => (
                       <tr key={m.id} className="hover:bg-surface-container/30 transition-colors group">
                         {/* Name */}
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             {m.photoUrl ? (
                               <img src={m.photoUrl} alt={m.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
@@ -486,14 +486,14 @@ export default function Markets() {
                               </div>
                             )}
                             <div>
-                              <p className="text-sm font-bold text-on-surface">{m.name}</p>
+                              <p className="text-sm font-semibold text-on-surface">{m.name}</p>
                               <p className="text-xs text-secondary">ID: {m.id.slice(-6).toUpperCase()}</p>
                             </div>
                           </div>
                         </td>
 
                         {/* Type */}
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-secondary">{m.icon}</span>
                             <span className="text-xs font-medium text-secondary">{m.type}</span>
@@ -501,8 +501,8 @@ export default function Markets() {
                         </td>
 
                         {/* Location */}
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 text-xs text-secondary font-medium">
                             <span className="material-symbols-outlined text-sm">location_on</span>
                             <span>{m.location}</span>
                           </div>
@@ -512,12 +512,12 @@ export default function Markets() {
                         </td>
 
                         {/* Status */}
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <StatusBadge status={m.status} />
                         </td>
 
                         {/* Today stats */}
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1 text-xs text-on-surface font-bold">
                               <span className="material-symbols-outlined text-sm text-primary">receipt_long</span>
@@ -531,7 +531,7 @@ export default function Markets() {
                         </td>
 
                         {/* Categories */}
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1.5">
                             {m.categories.map((cat) => (
                               <span key={cat} className="px-2 py-0.5 bg-surface-container text-[10px] font-medium rounded-full text-secondary">

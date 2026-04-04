@@ -204,7 +204,7 @@ export default function Shoppers() {
           <thead className="bg-surface-container-low border-b border-outline-variant/10">
             <tr>
               {['Shopper', 'Tier', 'Performance', 'Status & Verif.', 'Activity', 'Actions'].map((h, i) => (
-                <th key={h} className={`px-6 py-4 text-[11px] uppercase tracking-[0.05em] font-bold text-secondary ${i === 5 ? 'text-right' : ''}`}>
+                <th key={h} className={`px-6 py-4 text-xs uppercase tracking-[0.05em] font-bold text-secondary ${i === 5 ? 'text-right' : ''}`}>
                   {h}
                 </th>
               ))}
@@ -231,48 +231,48 @@ export default function Shoppers() {
               const ratingPct = Math.round((s.rating / 5) * 100);
               return (
                 <tr key={s.shopperId} className="hover:bg-surface transition-colors group">
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       {s.avatarUrl ? (
                         <img src={s.avatarUrl} alt={s.fullName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-bold text-neutral-600 flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
                           {s.initials}
                         </div>
                       )}
                       <div>
-                        <p className="text-sm font-bold text-on-surface">{s.fullName}</p>
-                        <p className="text-[11px] text-secondary">{s.email}</p>
+                        <p className="text-sm font-semibold text-on-surface">{s.fullName}</p>
+                        <p className="text-xs text-secondary">{s.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-1.5">
                       <TierDot tier={tier} />
                       <span className="text-xs font-medium text-on-surface">{tier}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1 text-on-surface">
                         <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                        <span className="text-xs font-bold">{Number(s.rating).toFixed(1)}</span>
+                        <span className="text-sm font-bold text-on-surface">{Number(s.rating).toFixed(1)}</span>
                       </div>
                       <div className="w-20 h-1 bg-surface-container-high rounded-full overflow-hidden">
                         <div className="h-full bg-tertiary rounded-full" style={{ width: `${ratingPct}%` }} />
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex flex-col gap-2">
                       <VerifBadge status={verifStatus} />
                       <OnlineDot status={onlineStatus} />
                     </div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-on-surface">{fmtNgn(s.earningsThisMonth)}</span>
-                      <span className="text-[11px] text-secondary">{s.completedOrders} Trips total</span>
+                      <span className="text-sm font-bold text-on-surface">{fmtNgn(s.earningsThisMonth)}</span>
+                      <span className="text-xs text-secondary">{s.completedOrders} Trips total</span>
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">

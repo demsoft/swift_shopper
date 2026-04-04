@@ -37,19 +37,19 @@ function StatusBadge({ status }: { status: OrderStatusLabel }) {
 
 function ShopperCell({ name, tier }: { name: string | null; tier: ShopperTier }) {
   if (!name) {
-    return <span className="text-neutral-400 italic text-sm">Assigning...</span>;
+    return <span className="text-secondary italic text-sm">Assigning...</span>;
   }
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-emerald-500/20 flex items-center justify-center text-[10px] font-bold text-emerald-700 flex-shrink-0">
+      <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
         {name.split(' ').map((n) => n[0]).join('')}
       </div>
       <div className="flex flex-col">
-        <span className="font-medium text-on-surface text-sm">{name}</span>
+        <span className="text-sm font-semibold text-on-surface">{name}</span>
         {tier === 'PRO SHOPPER' ? (
-          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-tighter">PRO SHOPPER</span>
+          <span className="text-xs text-primary font-bold uppercase tracking-tight">PRO SHOPPER</span>
         ) : (
-          <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-tighter">BASIC</span>
+          <span className="text-xs text-secondary font-bold uppercase tracking-tight">BASIC</span>
         )}
       </div>
     </div>
@@ -84,7 +84,7 @@ export default function Orders() {
           <h2 className="font-extrabold tracking-tight text-on-surface mb-2" style={{ fontSize: '2.75rem', letterSpacing: '-0.02em' }}>
             Order Management
           </h2>
-          <p className="text-secondary font-medium">
+          <p className="text-sm text-secondary font-medium">
             {result ? `${result.totalCount} total orders` : 'Loading orders...'}
           </p>
         </div>
@@ -156,13 +156,13 @@ export default function Orders() {
             <thead>
               <tr className="bg-surface-container-low">
                 {['Order ID', 'Customer', 'Shopper', 'Market/Store', 'Status', 'Total', 'Actions'].map((h, i) => (
-                  <th key={h} className={`px-6 py-4 text-[0.75rem] font-bold uppercase tracking-[0.05em] text-neutral-500 border-b border-outline-variant/10 ${i === 6 ? 'text-right' : ''}`}>
+                  <th key={h} className={`px-6 py-4 text-xs font-bold uppercase tracking-[0.05em] text-secondary border-b border-outline-variant/10 ${i === 6 ? 'text-right' : ''}`}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="text-sm divide-y divide-surface-container-low">
+            <tbody className="divide-y divide-surface-container-low">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-16 text-center text-secondary">
@@ -185,15 +185,15 @@ export default function Orders() {
                   key={order.orderId}
                   className={`hover:bg-primary/5 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-surface-container-low'}`}
                 >
-                  <td className="px-6 py-4 font-bold text-on-surface">#{order.orderId.slice(-6).toUpperCase()}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-on-surface">#{order.orderId.slice(-6).toUpperCase()}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-600 flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
                         {order.customerInitials}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-semibold text-on-surface">{order.customerName}</span>
-                        <span className="text-[10px] text-neutral-500 uppercase tracking-tighter">{order.customerLocation}</span>
+                        <span className="text-sm font-semibold text-on-surface">{order.customerName}</span>
+                        <span className="text-xs text-secondary">{order.customerLocation}</span>
                       </div>
                     </div>
                   </td>
@@ -202,14 +202,14 @@ export default function Orders() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-neutral-400">{order.marketIcon || 'storefront'}</span>
-                      <span className="font-medium text-on-surface-variant">{order.storeName}</span>
+                      <span className="material-symbols-outlined text-sm text-secondary">{order.marketIcon || 'storefront'}</span>
+                      <span className="text-sm font-medium text-on-surface">{order.storeName}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={STATUS_MAP[order.status] ?? 'Pending'} />
                   </td>
-                  <td className="px-6 py-4 font-bold text-on-surface">{fmtNgn(order.total)}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-on-surface">{fmtNgn(order.total)}</td>
                   <td className="px-6 py-4 text-right">
                     <button className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-neutral-400 group-hover:text-on-surface">
                       <span className="material-symbols-outlined">more_vert</span>
@@ -223,7 +223,7 @@ export default function Orders() {
 
         {/* Pagination */}
         <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant/10 flex items-center justify-between">
-          <span className="text-xs font-medium text-neutral-500">
+          <span className="text-xs font-medium text-secondary">
             Showing <span className="text-on-surface">{orders.length}</span> of <span className="text-on-surface">{result?.totalCount ?? 0}</span> results
           </span>
           <div className="flex items-center gap-1">
