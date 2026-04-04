@@ -477,6 +477,10 @@ class SwiftShopperRepository {
     await apiClient.post('/api/orders/$orderId/finish', {});
   }
 
+  Future<void> startDelivery({required String orderId}) async {
+    await apiClient.post('/api/orders/$orderId/start-delivery', {});
+  }
+
   Future<List<ShopperOrderData>> getShopperOrderHistory() async {
     final data = await apiClient.get('/api/orders/shopper/history');
 

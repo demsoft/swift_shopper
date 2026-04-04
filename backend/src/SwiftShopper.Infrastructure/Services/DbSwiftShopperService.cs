@@ -639,6 +639,22 @@ public class DbSwiftShopperService : ISwiftShopperService
         return order;
     }
 
+    public async Task<Order> StartDeliveryAsync(
+        string orderId, string shopperId, CancellationToken cancellationToken)
+    {
+        var order = await _dbContext.Orders
+            .FirstOrDefaultAsync(x => x.Id == orderId && x.ShopperId == shopperId, cancellationToken)
+            ?? throw new KeyNotFoundException("Order not found or not assigned to this shopper.");
+
+        if (order.Status != OrderStatus.Purchased)
+            throw new InvalidOperationException($"Cannot start delivery from status {order.Status}.");
+
+        order.Status = OrderStatus.OutForDelivery;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return order;
+    }
+
     // ── Chat ──────────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<ChatMessage>> GetMessagesAsync(

@@ -4,18 +4,47 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
+import '../../shared/data/swift_shopper_repository.dart';
 
-class ShoppingCompletedScreen extends ConsumerWidget {
+class ShoppingCompletedScreen extends ConsumerStatefulWidget {
   const ShoppingCompletedScreen({super.key, required this.job});
 
   final ActiveJobData job;
+
+  @override
+  ConsumerState<ShoppingCompletedScreen> createState() =>
+      _ShoppingCompletedScreenState();
+}
+
+class _ShoppingCompletedScreenState
+    extends ConsumerState<ShoppingCompletedScreen> {
+  bool _sending = false;
 
   String _fmt(double v) => v
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
+  Future<void> _confirmAndSend() async {
+    setState(() => _sending = true);
+    try {
+      final repo = ref.read(swiftShopperRepositoryProvider);
+      await repo.startDelivery(orderId: widget.job.orderId);
+      ref.invalidate(activeJobProvider);
+      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start delivery: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final job = widget.job;
     final foundItems = job.items.where((i) => i.status == 1).toList();
     final unavailableItems = job.items.where((i) => i.status == 2).toList();
     final allItems = job.items;
@@ -391,12 +420,18 @@ class ShoppingCompletedScreen extends ConsumerWidget {
                     width: double.infinity,
                     height: 54,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Pop back to home
-                        Navigator.of(context).popUntil((r) => r.isFirst);
-                      },
-                      icon: const Icon(Icons.send_rounded,
-                          color: Colors.white, size: 18),
+                      onPressed: _sending ? null : _confirmAndSend,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded,
+                              color: Colors.white, size: 18),
                       label: const Text(
                         'Confirm & Send to Customer',
                         style: TextStyle(

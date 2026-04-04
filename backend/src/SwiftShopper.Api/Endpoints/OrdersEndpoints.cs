@@ -207,6 +207,32 @@ public static class OrdersEndpoints
             }
         });
 
+        // POST /api/orders/{orderId}/start-delivery — shopper confirms receipt and starts delivery
+        group.MapPost("/{orderId}/start-delivery", async (
+            string orderId,
+            ClaimsPrincipal user,
+            ISwiftShopperService service,
+            CancellationToken cancellationToken) =>
+        {
+            var authenticatedShopperId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(authenticatedShopperId))
+                return Results.Unauthorized();
+
+            try
+            {
+                var order = await service.StartDeliveryAsync(orderId, authenticatedShopperId, cancellationToken);
+                return Results.Ok(new { order.Id, order.Status, order.UpdatedAt });
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // GET /api/orders/shopper/history — shopper's completed/cancelled order history
         group.MapGet("/shopper/history", async (
             ClaimsPrincipal user,

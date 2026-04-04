@@ -43,6 +43,9 @@ public interface ISwiftShopperService
     /// <summary>Shopper completes shopping — moves order to Purchased status.</summary>
     Task<Order> FinishShoppingAsync(string orderId, string shopperId, CancellationToken cancellationToken);
 
+    /// <summary>Shopper confirms the receipt and starts delivery — moves order to OutForDelivery.</summary>
+    Task<Order> StartDeliveryAsync(string orderId, string shopperId, CancellationToken cancellationToken);
+
     /// <summary>Returns the shopper's completed/cancelled order history.</summary>
     Task<IReadOnlyList<ShopperOrderHistoryDto>> GetShopperOrderHistoryAsync(string shopperId, CancellationToken cancellationToken);
 
