@@ -162,11 +162,17 @@ class SwiftShopperRepository {
 
     return data.map((item) {
       final map = item as Map<String, dynamic>;
-      final items = map['items'] as List? ?? [];
+      final store = map['preferredStore']?.toString() ?? 'Shopping Request';
+      final orderId = map['orderId']?.toString() ?? '';
+      final statusInt = (map['orderStatus'] as num?)?.toInt();
+      final statusLabel = statusInt != null ? _orderStatusLabel(statusInt) : 'Submitted';
       return RecentRequest(
-        title: map['preferredStore']?.toString() ?? 'Shopping Request',
+        orderId: orderId,
+        title: store,
+        store: store,
         date: _friendlyDate(map['createdAt']?.toString()),
-        itemsCount: items.length,
+        itemsCount: (map['itemsCount'] as num?)?.toInt() ?? 0,
+        status: statusLabel,
       );
     }).toList();
   }
@@ -614,6 +620,19 @@ class SwiftShopperRepository {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  String _orderStatusLabel(int status) {
+    switch (status) {
+      case 0: return 'Pending';
+      case 1: return 'Accepted';
+      case 2: return 'Shopping';
+      case 3: return 'Ready';
+      case 4: return 'Delivering';
+      case 5: return 'Delivered';
+      case 6: return 'Cancelled';
+      default: return 'Submitted';
+    }
+  }
 
   String _friendlyDate(String? iso) {
     if (iso == null) return 'Recently';

@@ -283,7 +283,7 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(entity);
     }
 
-    public Task<IReadOnlyList<ShoppingRequest>> GetRecentRequestsAsync(string customerId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<RecentRequestDto>> GetRecentRequestsAsync(string customerId, CancellationToken cancellationToken)
     {
         var requests = _requests
             .Where(x => x.CustomerId.Equals(customerId, StringComparison.OrdinalIgnoreCase))
@@ -291,7 +291,22 @@ public class InMemorySwiftShopperService : ISwiftShopperService
             .Take(10)
             .ToList();
 
-        return Task.FromResult<IReadOnlyList<ShoppingRequest>>(requests);
+        var dtos = requests.Select(r =>
+        {
+            var order = _orders.FirstOrDefault(o => o.RequestId == r.Id);
+            return new RecentRequestDto
+            {
+                Id = r.Id,
+                PreferredStore = r.PreferredStore,
+                DeliveryAddress = r.DeliveryAddress,
+                ItemsCount = r.Items.Count,
+                CreatedAt = r.CreatedAt,
+                OrderId = order?.Id,
+                OrderStatus = order != null ? (int)order.Status : null,
+            };
+        }).ToList();
+
+        return Task.FromResult<IReadOnlyList<RecentRequestDto>>(dtos);
     }
 
     public Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken)

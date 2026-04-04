@@ -35,78 +35,45 @@ class _CustomerOrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final user = ref.watch(authProvider).user;
     final activeOrdersAsync = ref.watch(activeOrdersProvider);
     final recentRequestsAsync = ref.watch(recentRequestsProvider);
 
-    final firstName = _firstName(user?.fullName);
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2EF),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async {
-            ref.invalidate(activeOrdersProvider);
-            ref.invalidate(recentRequestsProvider);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-            children: [
-              // ── Header ──────────────────────────────────────────────
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                        ? Image.network(
-                            user.avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.person, color: Colors.white, size: 24),
-                          )
-                        : const Icon(Icons.person, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      firstName,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.notifications_rounded,
-                      color: AppColors.textSecondary,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF0F2EF),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'My Orders',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0D1512),
+          ),
+        ),
+        centerTitle: true,
+        leading: canPop
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Color(0xFF0D1512), size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+      ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          ref.invalidate(activeOrdersProvider);
+          ref.invalidate(recentRequestsProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          children: [
+            const SizedBox(height: 8),
 
               // ── Active Orders ────────────────────────────────────────
               activeOrdersAsync.when(
@@ -203,7 +170,29 @@ class _CustomerOrdersScreen extends ConsumerWidget {
                       else
                         ...requests.map((request) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _RecentRequestCard(request: request),
+                          child: _RecentRequestCard(
+                            request: request,
+                            onTap: () {
+                              if (request.orderId.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Order not yet assigned to a shopper.'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+                              final order = ActiveOrder(
+                                orderId: request.orderId,
+                                title: request.title,
+                                store: request.store,
+                                status: request.status,
+                              );
+                              Navigator.of(context).push(MaterialPageRoute<void>(
+                                builder: (_) => OrderDetailsScreen(order: order),
+                              ));
+                            },
+                          ),
                         )),
                     ],
                   );
@@ -258,7 +247,6 @@ class _CustomerOrdersScreen extends ConsumerWidget {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -582,15 +570,18 @@ class _ActiveOrderCard extends StatelessWidget {
 // Customer – Recent Request Card
 // ---------------------------------------------------------------------------
 class _RecentRequestCard extends StatelessWidget {
-  const _RecentRequestCard({required this.request});
+  const _RecentRequestCard({required this.request, required this.onTap});
 
   final RecentRequest request;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -655,6 +646,7 @@ class _RecentRequestCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

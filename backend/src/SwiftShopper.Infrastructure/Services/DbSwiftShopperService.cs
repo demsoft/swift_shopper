@@ -191,14 +191,34 @@ public class DbSwiftShopperService : ISwiftShopperService
         return entity;
     }
 
-    public async Task<IReadOnlyList<ShoppingRequest>> GetRecentRequestsAsync(
+    public async Task<IReadOnlyList<RecentRequestDto>> GetRecentRequestsAsync(
         string customerId, CancellationToken cancellationToken)
     {
-        return await _dbContext.ShoppingRequests.AsNoTracking()
+        var requests = await _dbContext.ShoppingRequests.AsNoTracking()
             .Where(x => x.CustomerId == customerId)
             .OrderByDescending(x => x.CreatedAt)
             .Take(10)
             .ToListAsync(cancellationToken);
+
+        var requestIds = requests.Select(r => r.Id).ToList();
+        var orders = await _dbContext.Orders.AsNoTracking()
+            .Where(o => requestIds.Contains(o.RequestId))
+            .ToDictionaryAsync(o => o.RequestId, cancellationToken);
+
+        return requests.Select(r =>
+        {
+            orders.TryGetValue(r.Id, out var order);
+            return new RecentRequestDto
+            {
+                Id = r.Id,
+                PreferredStore = r.PreferredStore,
+                DeliveryAddress = r.DeliveryAddress,
+                ItemsCount = r.Items.Count,
+                CreatedAt = r.CreatedAt,
+                OrderId = order?.Id,
+                OrderStatus = order != null ? (int)order.Status : null,
+            };
+        }).ToList();
     }
 
     // ── Customer: Orders ──────────────────────────────────────────────────────

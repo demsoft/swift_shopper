@@ -16,7 +16,7 @@ public interface ISwiftShopperService
 
     // ── Customer: Requests ────────────────────────────────────────────────────
     Task<ShoppingRequest> CreateRequestAsync(CreateShoppingRequestDto request, CancellationToken cancellationToken);
-    Task<IReadOnlyList<ShoppingRequest>> GetRecentRequestsAsync(string customerId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<RecentRequestDto>> GetRecentRequestsAsync(string customerId, CancellationToken cancellationToken);
 
     // ── Customer: Orders ──────────────────────────────────────────────────────
     Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken);

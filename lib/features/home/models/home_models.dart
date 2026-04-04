@@ -40,14 +40,20 @@ class ActiveOrder {
 
 class RecentRequest {
   const RecentRequest({
+    required this.orderId,
     required this.title,
+    required this.store,
     required this.date,
     required this.itemsCount,
+    required this.status,
   });
 
+  final String orderId;
   final String title;
+  final String store;
   final String date;
   final int itemsCount;
+  final String status;
 }
 
 // ── Active Job (for shopper) ────────────────────────────────────────────
