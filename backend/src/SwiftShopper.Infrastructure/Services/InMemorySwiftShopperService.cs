@@ -657,6 +657,17 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(order);
     }
 
+    public Task<Order> ConfirmDeliveryAsync(string orderId, string customerId, CancellationToken cancellationToken)
+    {
+        var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase))
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.Status = OrderStatus.Delivered;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+
+        return Task.FromResult(order);
+    }
+
     public Task<Order> StartDeliveryAsync(string orderId, string shopperId, CancellationToken cancellationToken)
     {
         var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase))

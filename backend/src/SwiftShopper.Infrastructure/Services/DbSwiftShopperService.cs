@@ -639,6 +639,28 @@ public class DbSwiftShopperService : ISwiftShopperService
         return order;
     }
 
+    public async Task<Order> ConfirmDeliveryAsync(
+        string orderId, string customerId, CancellationToken cancellationToken)
+    {
+        var order = await _dbContext.Orders
+            .FirstOrDefaultAsync(x => x.Id == orderId, cancellationToken)
+            ?? throw new KeyNotFoundException("Order not found.");
+
+        var request = await _dbContext.ShoppingRequests.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == order.RequestId, cancellationToken);
+
+        if (request?.CustomerId != customerId)
+            throw new UnauthorizedAccessException("Order does not belong to this customer.");
+
+        if (order.Status != OrderStatus.OutForDelivery)
+            throw new InvalidOperationException($"Cannot confirm delivery from status {order.Status}.");
+
+        order.Status = OrderStatus.Delivered;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return order;
+    }
+
     public async Task<Order> StartDeliveryAsync(
         string orderId, string shopperId, CancellationToken cancellationToken)
     {

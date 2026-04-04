@@ -6,6 +6,7 @@ import '../models/home_models.dart';
 import '../providers/home_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../chat/presentation/chat_screen.dart';
+import '../../shared/data/swift_shopper_repository.dart';
 
 // item status ints from backend OrderItemStatus enum
 // 0 = Pending, 1 = Found, 2 = Unavailable
@@ -20,6 +21,27 @@ class OrderDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
+  bool _confirming = false;
+
+  Future<void> _confirmDelivery() async {
+    setState(() => _confirming = true);
+    try {
+      final repo = ref.read(swiftShopperRepositoryProvider);
+      await repo.confirmDelivery(orderId: widget.order.orderId);
+      ref.invalidate(activeOrdersProvider);
+      ref.invalidate(orderTrackingProvider(widget.order.orderId));
+      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to confirm delivery: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _confirming = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,6 +171,42 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                     ),
                   ),
                 ),
+                if (status == 'On The Way' || order.status == 'On The Way')
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton.icon(
+                        onPressed: _confirming ? null : _confirmDelivery,
+                        icon: _confirming
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.check_circle_rounded,
+                                color: Colors.white, size: 20),
+                        label: const Text(
+                          'I\'ve Received My Order',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             );
           },
