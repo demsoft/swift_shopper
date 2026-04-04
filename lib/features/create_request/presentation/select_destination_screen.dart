@@ -165,24 +165,6 @@ class _SelectDestinationScreenState
               size: 22,
             ),
           ),
-          const Spacer(),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFDDE0DB),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: AppColors.primary,
-              size: 22,
-            ),
-          ),
         ],
       ),
     );

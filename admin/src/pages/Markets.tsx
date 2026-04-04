@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMarkets, type AdminMarketDto } from '../lib/api';
+import { getMarkets, updateMarket, deleteMarket, uploadImage, type AdminMarketDto } from '../lib/api';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ interface Market {
   ordersToday: number;
   pinX: number;
   pinY: number;
+  photoUrl?: string | null;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ function toMarket(dto: AdminMarketDto): Market {
     ordersToday: dto.ordersToday,
     pinX: pinPos(dto.marketId, 'x'),
     pinY: pinPos(dto.marketId, 'y'),
+    photoUrl: dto.photoUrl,
   };
 }
 
@@ -106,6 +108,194 @@ function MapPin({ market, selected, onClick }: { market: Market; selected: boole
   );
 }
 
+// ── Edit Modal ─────────────────────────────────────────────────────────────
+
+const ALL_CATEGORIES = ['Groceries', 'Meat & Fish', 'Grains', 'Electronics', 'Pharmacy', 'Household', 'Fashion', 'Bakery', 'Beverages'];
+
+function EditMarketModal({ dto, onClose, onSaved }: { dto: AdminMarketDto; onClose: () => void; onSaved: (updated: AdminMarketDto) => void }) {
+  const [name, setName] = useState(dto.name);
+  const [address, setAddress] = useState(dto.address);
+  const [type, setType] = useState(dto.type);
+  const [active, setActive] = useState(dto.isActive);
+  const [openTime, setOpenTime] = useState(dto.openingTime);
+  const [closeTime, setCloseTime] = useState(dto.closingTime);
+  const [latitude, setLatitude] = useState(dto.latitude != null ? String(dto.latitude) : '');
+  const [longitude, setLongitude] = useState(dto.longitude != null ? String(dto.longitude) : '');
+  const [selectedCats, setSelectedCats] = useState<string[]>(dto.categories);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageName, setImageName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  function toggleCat(cat: string) {
+    setSelectedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      let photoUrl = dto.photoUrl;
+      if (imageFile) photoUrl = await uploadImage(imageFile);
+      const updated = await updateMarket(dto.marketId, {
+        name, address, type, isActive: active,
+        openingTime: openTime, closingTime: closeTime,
+        geofenceRadiusKm: dto.geofenceRadiusKm,
+        categories: selectedCats, location: dto.location, zone: dto.zone,
+        photoUrl, latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+      });
+      onSaved(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteMarket(dto.marketId);
+      onClose();
+      window.location.reload();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete');
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface w-full max-w-2xl rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <form onSubmit={handleSave}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/20">
+            <div>
+              <h3 className="text-lg font-extrabold text-on-surface">Edit Market</h3>
+              <p className="text-xs text-secondary mt-0.5">{dto.name}</p>
+            </div>
+            <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+              <span className="material-symbols-outlined text-secondary">close</span>
+            </button>
+          </div>
+
+          <div className="px-6 py-5 flex flex-col gap-5">
+            {error && <p className="text-error text-sm bg-error-container/30 rounded-xl px-4 py-3">{error}</p>}
+
+            {/* Name + Type */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Market Name</label>
+                <input value={name} onChange={e => setName(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Type</label>
+                <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="Supermarket">Supermarket</option>
+                  <option value="OpenMarket">Open Market</option>
+                  <option value="Specialty">Specialty</option>
+                  <option value="Mall">Mall</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Address</label>
+              <input value={address} onChange={e => setAddress(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+
+            {/* Hours + Status */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Opens</label>
+                <input type="time" value={openTime} onChange={e => setOpenTime(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Closes</label>
+                <input type="time" value={closeTime} onChange={e => setCloseTime(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div className="flex flex-col justify-end">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className={`w-10 h-6 rounded-full transition-colors relative ${active ? 'bg-primary' : 'bg-outline-variant'}`} onClick={() => setActive(v => !v)}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${active ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                  <span className="text-sm font-medium text-on-surface">{active ? 'Active' : 'Inactive'}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Coordinates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Latitude</label>
+                <input type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="e.g. 6.4281" className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Longitude</label>
+                <input type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="e.g. 3.4219" className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+            </div>
+
+            {/* Photo */}
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Photo</label>
+              {dto.photoUrl && !imageFile && (
+                <img src={dto.photoUrl} alt="current" className="w-full h-32 object-cover rounded-xl mb-2" />
+              )}
+              <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border-2 border-dashed border-outline-variant/40 hover:border-primary/40 transition-colors bg-surface-container-lowest">
+                <span className="material-symbols-outlined text-secondary">upload</span>
+                <span className="text-sm text-secondary">{imageName || 'Replace photo…'}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setImageFile(f); setImageName(f.name); } }} />
+              </label>
+            </div>
+
+            {/* Categories */}
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">Categories</label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_CATEGORIES.map(cat => (
+                  <button key={cat} type="button" onClick={() => toggleCat(cat)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${selectedCats.includes(cat) ? 'bg-primary text-white border-primary' : 'border-outline-variant/30 text-secondary hover:border-primary/40'}`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-outline-variant/20 flex items-center justify-between gap-3">
+            {confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-error font-medium">Delete this market?</span>
+                <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-error text-white rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-50">
+                  {deleting ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-secondary hover:bg-surface-container-low">Cancel</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 text-error text-sm font-bold hover:opacity-80 transition-opacity">
+                <span className="material-symbols-outlined text-base">delete</span> Delete Market
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-outline-variant/30 text-sm font-bold text-secondary hover:bg-surface-container-low transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition-all">
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Markets() {
@@ -116,21 +306,30 @@ export default function Markets() {
   const [search, setSearch] = useState('');
   const [mapPipExpanded, setMapPipExpanded] = useState(false);
   const [markets, setMarkets] = useState<Market[]>([]);
+  const [rawDtos, setRawDtos] = useState<AdminMarketDto[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [totalPages, setTotalPages] = useState(1);
+  const [editingDto, setEditingDto] = useState<AdminMarketDto | null>(null);
 
   useEffect(() => {
     setLoading(true);
     getMarkets(typeFilter || undefined, undefined, currentPage, 20)
       .then((res) => {
         setMarkets(res.items.map(toMarket));
+        setRawDtos(res.items);
         setTotalCount(res.totalCount);
         setTotalPages(res.totalPages);
       })
       .finally(() => setLoading(false));
   }, [currentPage, typeFilter]);
+
+  function handleMarketSaved(updated: AdminMarketDto) {
+    setRawDtos(prev => prev.map(d => d.marketId === updated.marketId ? updated : d));
+    setMarkets(prev => prev.map(m => m.id === updated.marketId ? toMarket(updated) : m));
+    setEditingDto(null);
+  }
 
   const filtered = markets.filter((m) =>
     search === '' ||
@@ -279,9 +478,13 @@ export default function Markets() {
                         {/* Name */}
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center ${m.iconColor} group-hover:bg-primary-fixed-dim/20 transition-colors flex-shrink-0`}>
-                              <span className="material-symbols-outlined">{m.icon}</span>
-                            </div>
+                            {m.photoUrl ? (
+                              <img src={m.photoUrl} alt={m.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                            ) : (
+                              <div className={`w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center ${m.iconColor} group-hover:bg-primary-fixed-dim/20 transition-colors flex-shrink-0`}>
+                                <span className="material-symbols-outlined">{m.icon}</span>
+                              </div>
+                            )}
                             <div>
                               <p className="text-sm font-bold text-on-surface">{m.name}</p>
                               <p className="text-xs text-secondary">ID: {m.id.slice(-6).toUpperCase()}</p>
@@ -340,8 +543,12 @@ export default function Markets() {
 
                         {/* Actions */}
                         <td className="px-6 py-5 text-right">
-                          <button className="p-2 hover:bg-surface-container rounded-full transition-colors">
-                            <span className="material-symbols-outlined text-secondary">more_vert</span>
+                          <button
+                            onClick={() => setEditingDto(rawDtos.find(d => d.marketId === m.id) ?? null)}
+                            className="p-2 hover:bg-surface-container rounded-full transition-colors"
+                            title="Edit market"
+                          >
+                            <span className="material-symbols-outlined text-secondary">edit</span>
                           </button>
                         </td>
                       </tr>
@@ -666,6 +873,15 @@ export default function Markets() {
           </span>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingDto && (
+        <EditMarketModal
+          dto={editingDto}
+          onClose={() => setEditingDto(null)}
+          onSaved={handleMarketSaved}
+        />
+      )}
     </main>
   );
 }

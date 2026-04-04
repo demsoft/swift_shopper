@@ -164,9 +164,13 @@ export default function Customers() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full ${c.avatarBg} flex items-center justify-center ${c.avatarText} font-bold text-sm flex-shrink-0`}>
-                        {c.initials}
-                      </div>
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt={c.fullName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full ${c.avatarBg} flex items-center justify-center ${c.avatarText} font-bold text-sm flex-shrink-0`}>
+                          {c.initials}
+                        </div>
+                      )}
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-on-surface">{c.fullName}</span>
                         <span className="text-[0.7rem] text-secondary font-medium">ID: {c.customerId.slice(-6).toUpperCase()}</span>

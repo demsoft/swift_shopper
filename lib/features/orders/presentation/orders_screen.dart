@@ -455,18 +455,19 @@ class _ActiveOrderCard extends StatelessWidget {
             // Shopper + Total row
             Row(
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE8EAE7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.person_outline_rounded,
-                    color: AppColors.textSecondary,
-                    size: 22,
-                  ),
+                CircleAvatar(
+                  radius: 23,
+                  backgroundColor: const Color(0xFFE8EAE7),
+                  backgroundImage: order.shopperAvatarUrl != null && order.shopperAvatarUrl!.isNotEmpty
+                      ? NetworkImage(order.shopperAvatarUrl!)
+                      : null,
+                  child: order.shopperAvatarUrl == null || order.shopperAvatarUrl!.isEmpty
+                      ? const Icon(
+                          Icons.person_outline_rounded,
+                          color: AppColors.textSecondary,
+                          size: 22,
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

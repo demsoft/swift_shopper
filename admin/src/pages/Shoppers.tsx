@@ -233,9 +233,13 @@ export default function Shoppers() {
                 <tr key={s.shopperId} className="hover:bg-surface transition-colors group">
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-bold text-neutral-600 flex-shrink-0">
-                        {s.initials}
-                      </div>
+                      {s.avatarUrl ? (
+                        <img src={s.avatarUrl} alt={s.fullName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-bold text-neutral-600 flex-shrink-0">
+                          {s.initials}
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm font-bold text-on-surface">{s.fullName}</p>
                         <p className="text-[11px] text-secondary">{s.email}</p>

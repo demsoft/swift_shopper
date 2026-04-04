@@ -150,6 +150,7 @@ export interface AdminShopperDto {
   shopperId: string;
   fullName: string;
   initials: string;
+  avatarUrl?: string | null;
   email: string;
   phoneNumber: string;
   isOnline: boolean;
@@ -182,6 +183,7 @@ export interface AdminCustomerDto {
   customerId: string;
   fullName: string;
   initials: string;
+  avatarUrl?: string | null;
   avatarBg: string;
   avatarText: string;
   email: string;

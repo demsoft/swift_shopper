@@ -76,6 +76,7 @@ public record AdminShopperDto
     public string ShopperId { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
     public string Initials { get; init; } = string.Empty;
+    public string? AvatarUrl { get; init; }
     public string Email { get; init; } = string.Empty;
     public string PhoneNumber { get; init; } = string.Empty;
     public bool IsOnline { get; init; }
@@ -100,6 +101,7 @@ public record AdminCustomerDto
     public string CustomerId { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
     public string Initials { get; init; } = string.Empty;
+    public string? AvatarUrl { get; init; }
     public string AvatarBg { get; init; } = "bg-neutral-200";
     public string AvatarText { get; init; } = "text-neutral-600";
     public string Email { get; init; } = string.Empty;
