@@ -13,6 +13,7 @@ class ActiveOrder {
     required this.store,
     required this.status,
     this.shopperName = '',
+    this.shopperAvatarUrl,
     this.total = 0,
     this.deliveryFee = 0,
     this.serviceFee = 0,
@@ -28,6 +29,7 @@ class ActiveOrder {
   final String store;
   final String status;
   final String shopperName;
+  final String? shopperAvatarUrl;
   final double total;
   final double deliveryFee;
   final double serviceFee;

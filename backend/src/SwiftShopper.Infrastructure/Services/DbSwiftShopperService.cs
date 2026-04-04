@@ -272,11 +272,24 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Where(m => storeNames.Contains(m.Name))
             .ToDictionaryAsync(m => m.Name, cancellationToken);
 
+        // Resolve shopper avatar URLs
+        var shopperIds = orders
+            .Where(o => !string.IsNullOrWhiteSpace(o.ShopperId))
+            .Select(o => o.ShopperId!)
+            .Distinct()
+            .ToList();
+        var shopperAvatars = shopperIds.Count > 0
+            ? await _dbContext.UserAccounts.AsNoTracking()
+                .Where(u => shopperIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.AvatarUrl, cancellationToken)
+            : new Dictionary<string, string?>();
+
         return orders.Select(o =>
         {
             requests.TryGetValue(o.RequestId, out var req);
             itemCounts.TryGetValue(o.Id, out var totalItems);
             markets.TryGetValue(o.StoreName, out var market);
+            var shopperAvatarUrl = o.ShopperId != null && shopperAvatars.TryGetValue(o.ShopperId, out var av) ? av : null;
 
             var estimatedTotal = req?.Budget ?? 0m;
 
@@ -297,6 +310,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 EstimatedDeliveryMinutes = o.EstimatedDeliveryMinutes,
                 UpdatedAt = o.UpdatedAt,
                 StorePhotoUrl = market?.PhotoUrl,
+                ShopperAvatarUrl = shopperAvatarUrl,
             };
         }).ToList();
     }

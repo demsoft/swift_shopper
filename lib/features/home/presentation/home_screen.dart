@@ -568,7 +568,8 @@ class _CustomerOrderCard extends StatelessWidget {
     final progress = order.totalItemsCount > 0
         ? order.pickedItemsCount / order.totalItemsCount
         : 0.0;
-    final photoUrl = order.storePhotoUrl;
+    final storePhotoUrl = order.storePhotoUrl;
+    final shopperAvatarUrl = order.shopperAvatarUrl;
 
     return GestureDetector(
       onTap: onTap,
@@ -589,19 +590,42 @@ class _CustomerOrderCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 76,
-                    height: 76,
-                    child: photoUrl != null && photoUrl.isNotEmpty
-                        ? Image.network(
-                            photoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _placeholder(),
-                          )
-                        : _placeholder(),
-                  ),
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 76,
+                        height: 76,
+                        child: storePhotoUrl != null && storePhotoUrl.isNotEmpty
+                            ? Image.network(
+                                storePhotoUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _placeholder(),
+                              )
+                            : _placeholder(),
+                      ),
+                    ),
+                    if (order.shopperName.isNotEmpty)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Colors.white,
+                          child: CircleAvatar(
+                            radius: 12,
+                            backgroundColor: AppColors.primaryDark,
+                            backgroundImage: shopperAvatarUrl != null && shopperAvatarUrl.isNotEmpty
+                                ? NetworkImage(shopperAvatarUrl)
+                                : null,
+                            child: shopperAvatarUrl == null || shopperAvatarUrl.isEmpty
+                                ? const Icon(Icons.person, color: Colors.white, size: 14)
+                                : null,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(

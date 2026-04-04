@@ -147,6 +147,7 @@ class SwiftShopperRepository {
         estimatedItemsTotal: estimatedItemsTotal,
         itemsSubtotal: itemsSubtotal,
         storePhotoUrl: map['storePhotoUrl']?.toString(),
+        shopperAvatarUrl: map['shopperAvatarUrl']?.toString(),
         pickedItemsCount: (map['pickedItemsCount'] as num? ?? 0).toInt(),
         totalItemsCount: (map['totalItemsCount'] as num? ?? 0).toInt(),
       );

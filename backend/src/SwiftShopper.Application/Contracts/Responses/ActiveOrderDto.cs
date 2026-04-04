@@ -19,4 +19,5 @@ public class ActiveOrderDto
     public int EstimatedDeliveryMinutes { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public string? StorePhotoUrl { get; set; }
+    public string? ShopperAvatarUrl { get; set; }
 }
