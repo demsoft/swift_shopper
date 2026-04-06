@@ -410,7 +410,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '₦14,250.00',
+            '₦0.00',
             style: theme.textTheme.headlineLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -970,7 +970,7 @@ class _EarningsCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '₦ 14,250.00',
+            '₦ 0.00',
             style: theme.textTheme.displayMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -998,7 +998,7 @@ class _ShopperStatsRow extends StatelessWidget {
             icon: Icons.star_rounded,
             iconColor: AppColors.warning,
             label: 'RATING',
-            value: '4.9',
+            value: '0',
           ),
         ),
         SizedBox(width: 10),
@@ -1007,7 +1007,7 @@ class _ShopperStatsRow extends StatelessWidget {
             icon: Icons.local_shipping_rounded,
             iconColor: AppColors.primary,
             label: 'TRIPS',
-            value: '1,240',
+            value: '0',
           ),
         ),
         SizedBox(width: 10),
@@ -1016,7 +1016,7 @@ class _ShopperStatsRow extends StatelessWidget {
             icon: Icons.access_time_filled_rounded,
             iconColor: AppColors.primary,
             label: 'ON-TIME',
-            value: '98%',
+            value: '0',
           ),
         ),
       ],

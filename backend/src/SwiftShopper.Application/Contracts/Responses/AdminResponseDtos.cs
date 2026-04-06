@@ -59,8 +59,10 @@ public record AdminOrderDto
     public string OrderId { get; init; } = string.Empty;
     public string CustomerName { get; init; } = string.Empty;
     public string CustomerInitials { get; init; } = string.Empty;
+    public string? CustomerAvatarUrl { get; init; }
     public string CustomerLocation { get; init; } = string.Empty;
     public string? ShopperName { get; init; }
+    public string? ShopperAvatarUrl { get; init; }
     public string? ShopperTier { get; init; }
     public string StoreName { get; init; } = string.Empty;
     public string MarketIcon { get; init; } = "storefront";

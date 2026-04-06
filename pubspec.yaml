@@ -36,6 +36,7 @@ dependencies:
   signalr_netcore: ^1.4.4
   shared_preferences: ^2.3.2
   image_picker: ^1.1.2
+  file_picker: ^8.1.2
   http_parser: ^4.0.0
   geolocator: ^13.0.2
 

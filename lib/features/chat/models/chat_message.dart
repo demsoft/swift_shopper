@@ -11,6 +11,7 @@ class ChatMessage {
     this.text,
     this.imageUrl,
     this.priceCardData,
+    this.replyToText,
   });
 
   final String id;
@@ -20,6 +21,8 @@ class ChatMessage {
   final String? text;
   final String? imageUrl;
   final PriceCardData? priceCardData;
+  /// Snippet of the message being replied to (local only, not persisted).
+  final String? replyToText;
 }
 
 class PriceCardData {

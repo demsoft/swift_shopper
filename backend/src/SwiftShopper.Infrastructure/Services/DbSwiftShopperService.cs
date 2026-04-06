@@ -1084,19 +1084,30 @@ public class DbSwiftShopperService : ISwiftShopperService
         var customers = await _dbContext.UserAccounts.AsNoTracking()
             .Where(x => customerIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
+        var shopperIds = orders
+            .Where(x => !string.IsNullOrWhiteSpace(x.ShopperId))
+            .Select(x => x.ShopperId!)
+            .Distinct()
+            .ToList();
+        var shoppers = await _dbContext.UserAccounts.AsNoTracking()
+            .Where(x => shopperIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, ct);
 
         var dtos = orders.Select(o =>
         {
             requests.TryGetValue(o.RequestId, out var req);
             customers.TryGetValue(req?.CustomerId ?? "", out var cust);
+            shoppers.TryGetValue(o.ShopperId ?? "", out var shopper);
             var name = cust?.FullName ?? "Unknown";
             return new AdminOrderDto
             {
                 OrderId = o.Id,
                 CustomerName = name,
                 CustomerInitials = ToInitials(name),
+                CustomerAvatarUrl = cust?.AvatarUrl,
                 CustomerLocation = req?.DeliveryAddress ?? "",
                 ShopperName = o.ShopperId is not null ? o.ShopperName : null,
+                ShopperAvatarUrl = shopper?.AvatarUrl,
                 ShopperTier = null,
                 StoreName = o.StoreName,
                 MarketIcon = "storefront",
@@ -1127,6 +1138,10 @@ public class DbSwiftShopperService : ISwiftShopperService
             ? await _dbContext.UserAccounts.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == req.CustomerId, ct)
             : null;
+        var shopper = !string.IsNullOrWhiteSpace(o.ShopperId)
+            ? await _dbContext.UserAccounts.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == o.ShopperId, ct)
+            : null;
 
         var name = cust?.FullName ?? "Unknown";
         return new AdminOrderDto
@@ -1134,8 +1149,10 @@ public class DbSwiftShopperService : ISwiftShopperService
             OrderId = o.Id,
             CustomerName = name,
             CustomerInitials = ToInitials(name),
+            CustomerAvatarUrl = cust?.AvatarUrl,
             CustomerLocation = req?.DeliveryAddress ?? "",
             ShopperName = o.ShopperId is not null ? o.ShopperName : null,
+            ShopperAvatarUrl = shopper?.AvatarUrl,
             ShopperTier = null,
             StoreName = o.StoreName,
             MarketIcon = "storefront",

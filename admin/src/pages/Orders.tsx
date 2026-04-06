@@ -35,15 +35,66 @@ function StatusBadge({ status }: { status: OrderStatusLabel }) {
   );
 }
 
-function ShopperCell({ name, tier }: { name: string | null; tier: ShopperTier }) {
+function Avatar({
+  imageUrl,
+  initials,
+  alt,
+  onClick,
+}: {
+  imageUrl?: string | null;
+  initials: string;
+  alt: string;
+  onClick?: () => void;
+}) {
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+        onClick={onClick}
+      />
+    );
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
+      {initials}
+    </div>
+  );
+}
+
+function ShopperCell({
+  name,
+  tier,
+  avatarUrl,
+  onViewImage,
+}: {
+  name: string | null;
+  tier: ShopperTier;
+  avatarUrl?: string | null;
+  onViewImage?: (url: string, name: string) => void;
+}) {
   if (!name) {
     return <span className="text-secondary italic text-sm">Assigning...</span>;
   }
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('');
+
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
-        {name.split(' ').map((n) => n[0]).join('')}
-      </div>
+      <Avatar
+        imageUrl={avatarUrl}
+        initials={initials}
+        alt={name}
+        onClick={
+          avatarUrl && onViewImage
+            ? () => onViewImage(avatarUrl, name)
+            : undefined
+        }
+      />
       <div className="flex flex-col">
         <span className="text-sm font-semibold text-on-surface">{name}</span>
         {tier === 'PRO SHOPPER' ? (
@@ -64,6 +115,7 @@ export default function Orders() {
   const [result, setResult] = useState<PagedResult<AdminOrderDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewingImage, setViewingImage] = useState<{ url: string; name: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -78,6 +130,28 @@ export default function Orders() {
 
   return (
     <main className="pt-10 px-8 pb-12 min-h-screen bg-surface">
+      {viewingImage && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center"
+          onClick={() => setViewingImage(null)}
+        >
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <img
+              src={viewingImage.url}
+              alt={viewingImage.name}
+              className="max-h-[80vh] max-w-[80vw] rounded-2xl object-contain shadow-2xl"
+            />
+            <p className="text-center text-white text-sm font-semibold mt-3">{viewingImage.name}</p>
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-100"
+            >
+              <span className="material-symbols-outlined text-sm text-neutral-700">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="grid grid-cols-12 gap-6 mb-8">
         <div className="col-span-12 lg:col-span-8">
@@ -188,9 +262,16 @@ export default function Orders() {
                   <td className="px-6 py-4 text-sm font-bold text-on-surface">#{order.orderId.slice(-6).toUpperCase()}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
-                        {order.customerInitials}
-                      </div>
+                      <Avatar
+                        imageUrl={order.customerAvatarUrl}
+                        initials={order.customerInitials}
+                        alt={order.customerName}
+                        onClick={
+                          order.customerAvatarUrl
+                            ? () => setViewingImage({ url: order.customerAvatarUrl!, name: order.customerName })
+                            : undefined
+                        }
+                      />
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-on-surface">{order.customerName}</span>
                         <span className="text-xs text-secondary">{order.customerLocation}</span>
@@ -198,7 +279,12 @@ export default function Orders() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <ShopperCell name={order.shopperName} tier={(order.shopperTier as ShopperTier) ?? null} />
+                    <ShopperCell
+                      name={order.shopperName}
+                      tier={(order.shopperTier as ShopperTier) ?? null}
+                      avatarUrl={order.shopperAvatarUrl}
+                      onViewImage={(url, name) => setViewingImage({ url, name })}
+                    />
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">

@@ -622,6 +622,62 @@ class SwiftShopperRepository {
         });
   }
 
+  Future<void> sendImageMessage({
+    required List<int> bytes,
+    required String fileName,
+    required String contentType,
+    String? orderId,
+    bool isShopper = false,
+  }) async {
+    final data = await apiClient.postFile(
+      path: '/api/upload/image',
+      bytes: bytes,
+      fileName: fileName,
+      contentType: contentType,
+    );
+    final imageUrl = data is Map<String, dynamic>
+        ? (data['url']?.toString() ?? data['imageUrl']?.toString())
+        : null;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      throw Exception('Image upload failed');
+    }
+    await apiClient
+        .post('/api/orders/${orderId ?? AppEnv.orderId}/chat/messages', {
+          'sender': isShopper ? 'shopper' : 'customer',
+          'type': 'image',
+          'imageUrl': imageUrl,
+          'text': null,
+        });
+  }
+
+  Future<void> sendFileMessage({
+    required List<int> bytes,
+    required String fileName,
+    required String contentType,
+    String? orderId,
+    bool isShopper = false,
+  }) async {
+    final data = await apiClient.postFile(
+      path: '/api/upload/image',
+      bytes: bytes,
+      fileName: fileName,
+      contentType: contentType,
+    );
+    final fileUrl = data is Map<String, dynamic>
+        ? (data['url']?.toString() ?? data['imageUrl']?.toString())
+        : null;
+    if (fileUrl == null || fileUrl.isEmpty) {
+      throw Exception('File upload failed');
+    }
+    await apiClient
+        .post('/api/orders/${orderId ?? AppEnv.orderId}/chat/messages', {
+          'sender': isShopper ? 'shopper' : 'customer',
+          'type': 'text',
+          'text': '📎 $fileName\n$fileUrl',
+          'imageUrl': null,
+        });
+  }
+
   Future<void> sendPriceDecision({
     required int decision,
     String? note,

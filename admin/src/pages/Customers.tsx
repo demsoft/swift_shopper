@@ -62,6 +62,7 @@ export default function Customers() {
   const [result, setResult] = useState<PagedResult<AdminCustomerDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewingImage, setViewingImage] = useState<{ url: string; name: string } | null>(null);
 
   function load() {
     setLoading(true);
@@ -79,6 +80,29 @@ export default function Customers() {
 
   return (
     <section className="pt-10 px-8 pb-12 min-h-screen">
+      {/* Image viewer modal */}
+      {viewingImage && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center"
+          onClick={() => setViewingImage(null)}
+        >
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <img
+              src={viewingImage.url}
+              alt={viewingImage.name}
+              className="max-h-[80vh] max-w-[80vw] rounded-2xl object-contain shadow-2xl"
+            />
+            <p className="text-center text-white text-sm font-semibold mt-3">{viewingImage.name}</p>
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-100"
+            >
+              <span className="material-symbols-outlined text-sm text-neutral-700">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-end mb-10">
         <div>
@@ -165,7 +189,12 @@ export default function Customers() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       {c.avatarUrl ? (
-                        <img src={c.avatarUrl} alt={c.fullName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                        <img
+                          src={c.avatarUrl}
+                          alt={c.fullName}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          onClick={() => setViewingImage({ url: c.avatarUrl!, name: c.fullName })}
+                        />
                       ) : (
                         <div className={`w-10 h-10 rounded-full ${c.avatarBg} flex items-center justify-center ${c.avatarText} font-bold text-xs flex-shrink-0`}>
                           {c.initials}

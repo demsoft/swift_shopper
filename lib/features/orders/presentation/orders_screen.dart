@@ -1213,7 +1213,7 @@ class _JobCardSkeleton extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Delivery history card
 // ---------------------------------------------------------------------------
-class _DeliveryHistoryCard extends StatelessWidget {
+class _DeliveryHistoryCard extends ConsumerWidget {
   const _DeliveryHistoryCard({required this.order});
 
   final ShopperOrderData order;
@@ -1222,9 +1222,24 @@ class _DeliveryHistoryCard extends StatelessWidget {
       '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDelivered = order.status == 5;
     final statusLabel = isDelivered ? 'DELIVERED' : 'COMPLETED';
+
+    // Resolve store photo from loaded markets
+    String? photoUrl;
+    void tryMarkets(List<MarketData> markets) {
+      for (final m in markets) {
+        if (m.name.toLowerCase() == order.storeName.toLowerCase() &&
+            m.photoUrl != null &&
+            m.photoUrl!.isNotEmpty) {
+          photoUrl = m.photoUrl;
+          return;
+        }
+      }
+    }
+    ref.watch(supermarketsProvider).whenData(tryMarkets);
+    if (photoUrl == null) ref.watch(openMarketsProvider).whenData(tryMarkets);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1241,16 +1256,18 @@ class _DeliveryHistoryCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Store thumbnail placeholder
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEEEEE),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.storefront_rounded,
-                color: AppColors.textSecondary, size: 26),
+          // Store thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: photoUrl != null
+                ? Image.network(
+                    photoUrl!,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _fallbackIcon(),
+                  )
+                : _fallbackIcon(),
           ),
           const SizedBox(width: 12),
 
@@ -1313,4 +1330,12 @@ class _DeliveryHistoryCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _fallbackIcon() => Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
+        child: const Icon(Icons.storefront_rounded,
+            color: AppColors.textSecondary, size: 26),
+      );
 }

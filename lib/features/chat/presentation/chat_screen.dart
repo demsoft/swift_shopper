@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
@@ -27,6 +29,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  ChatMessage? _replyingTo;
 
   @override
   void dispose() {
@@ -60,9 +63,122 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final reply = _replyingTo;
     _controller.clear();
-    await ref.read(chatProvider(_args).notifier).sendTextMessage(text);
+    setState(() => _replyingTo = null);
+    await ref.read(chatProvider(_args).notifier).sendTextMessage(
+          text,
+          replyToText: reply?.text ?? (reply?.imageUrl != null ? '📷 Photo' : null),
+        );
     _scrollToBottom();
+  }
+
+  Future<void> _pickImage(ImageSource source, {bool fromSheet = false}) async {
+    if (fromSheet) Navigator.of(context).pop();
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final name = picked.name;
+    final ext = name.split('.').last.toLowerCase();
+    final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
+    try {
+      await ref.read(chatProvider(_args).notifier).sendMediaMessage(
+            bytes: bytes,
+            fileName: name,
+            contentType: contentType,
+            isImage: true,
+          );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFile() async {
+    Navigator.of(context).pop(); // close bottom sheet
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+    final name = file.name;
+    final ext = name.split('.').last.toLowerCase();
+    final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext);
+    final contentType = isImage
+        ? (ext == 'png' ? 'image/png' : 'image/jpeg')
+        : 'application/octet-stream';
+    try {
+      await ref.read(chatProvider(_args).notifier).sendMediaMessage(
+            bytes: file.bytes!,
+            fileName: name,
+            contentType: contentType,
+            isImage: isImage,
+          );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send file: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAttachOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Share',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0D1512)),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _AttachOption(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Camera',
+                    color: AppColors.primary,
+                    onTap: () => _pickImage(ImageSource.camera, fromSheet: true),
+                  ),
+                  _AttachOption(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Gallery',
+                    color: const Color(0xFF1565C0),
+                    onTap: () => _pickImage(ImageSource.gallery, fromSheet: true),
+                  ),
+                  _AttachOption(
+                    icon: Icons.attach_file_rounded,
+                    label: 'File',
+                    color: const Color(0xFFE07B39),
+                    onTap: _pickFile,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -128,23 +244,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           : msg.sender == SenderType.customer;
                       final timeStr = _fmtTime(msg.time);
 
+                      Widget bubble;
                       if (msg.type == MessageType.image) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _ImageBubble(
-                            imageUrl: msg.imageUrl ?? '',
-                            time: timeStr,
-                            isSent: isSent,
-                          ),
+                        bubble = _ImageBubble(
+                          imageUrl: msg.imageUrl ?? '',
+                          time: timeStr,
+                          isSent: isSent,
+                        );
+                      } else if (isSent) {
+                        bubble = _SentBubble(
+                          text: msg.text ?? '',
+                          time: timeStr,
+                          replyToText: msg.replyToText,
+                        );
+                      } else {
+                        bubble = _ReceivedBubble(
+                          text: msg.text ?? '',
+                          time: timeStr,
+                          replyToText: msg.replyToText,
                         );
                       }
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: isSent
-                            ? _SentBubble(text: msg.text ?? '', time: timeStr)
-                            : _ReceivedBubble(
-                                text: msg.text ?? '', time: timeStr),
+                        child: _SwipeToReply(
+                          onReply: () => setState(() => _replyingTo = msg),
+                          child: bubble,
+                        ),
                       );
                     },
                   );
@@ -241,8 +367,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_replyingTo != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F6F4),
+                borderRadius: BorderRadius.circular(12),
+                border: const Border(
+                  left: BorderSide(color: AppColors.primary, width: 3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Replying to',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          _replyingTo!.text ?? (_replyingTo!.imageUrl != null ? '📷 Photo' : ''),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _replyingTo = null),
+                    child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF9A9C97)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Row(
             children: [
+              GestureDetector(
+                onTap: isSending ? null : _showAttachOptions,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F6F4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.attach_file_rounded,
+                      color: Color(0xFF6B7280), size: 22),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 44),
@@ -267,7 +447,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: isSending ? null : () => _pickImage(ImageSource.camera),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF5F6F4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: Color(0xFF6B7280), size: 22),
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: isSending ? null : _send,
                 child: Container(
@@ -348,10 +542,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 // SENT BUBBLE
 // ===========================================================================
 class _SentBubble extends StatelessWidget {
-  const _SentBubble({required this.text, required this.time});
+  const _SentBubble({required this.text, required this.time, this.replyToText});
 
   final String text;
   final String time;
+  final String? replyToText;
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +568,25 @@ class _SentBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            if (replyToText != null) ...[
+              Container(
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border(
+                    left: BorderSide(color: Colors.white.withValues(alpha: 0.8), width: 3),
+                  ),
+                ),
+                child: Text(
+                  replyToText!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
+                ),
+              ),
+            ],
             Text(text,
                 style: const TextStyle(
                     fontSize: 15, color: Colors.white, height: 1.45)),
@@ -399,10 +613,11 @@ class _SentBubble extends StatelessWidget {
 // RECEIVED TEXT BUBBLE
 // ===========================================================================
 class _ReceivedBubble extends StatelessWidget {
-  const _ReceivedBubble({required this.text, required this.time});
+  const _ReceivedBubble({required this.text, required this.time, this.replyToText});
 
   final String text;
   final String time;
+  final String? replyToText;
 
   @override
   Widget build(BuildContext context) {
@@ -431,6 +646,25 @@ class _ReceivedBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (replyToText != null) ...[
+              Container(
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F2EF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: const Border(
+                    left: BorderSide(color: AppColors.primary, width: 3),
+                  ),
+                ),
+                child: Text(
+                  replyToText!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), height: 1.3),
+                ),
+              ),
+            ],
             Text(text,
                 style: const TextStyle(
                     fontSize: 15,
@@ -543,6 +777,53 @@ class _QuickReplyChip extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: Color(0xFF0D1512)),
         ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// ATTACH OPTION BUTTON (used in bottom sheet)
+// ===========================================================================
+class _AttachOption extends StatelessWidget {
+  const _AttachOption({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0D1512),
+            ),
+          ),
+        ],
       ),
     );
   }

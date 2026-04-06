@@ -113,8 +113,10 @@ export interface AdminOrderDto {
   orderId: string;
   customerName: string;
   customerInitials: string;
+  customerAvatarUrl?: string | null;
   customerLocation: string;
   shopperName: string | null;
+  shopperAvatarUrl?: string | null;
   shopperTier: string | null;
   storeName: string;
   marketIcon: string;

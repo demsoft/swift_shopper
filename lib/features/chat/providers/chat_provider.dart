@@ -136,7 +136,47 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
     );
   }
 
-  Future<void> sendTextMessage(String text) async {
+  Future<void> sendMediaMessage({
+    required List<int> bytes,
+    required String fileName,
+    required String contentType,
+    required bool isImage,
+  }) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    state = AsyncData(current.copyWith(isSending: true));
+    try {
+      final repository = ref.read(swiftShopperRepositoryProvider);
+      if (isImage) {
+        await repository.sendImageMessage(
+          bytes: bytes,
+          fileName: fileName,
+          contentType: contentType,
+          orderId: arg.orderId,
+          isShopper: arg.isShopper,
+        );
+      } else {
+        await repository.sendFileMessage(
+          bytes: bytes,
+          fileName: fileName,
+          contentType: contentType,
+          orderId: arg.orderId,
+          isShopper: arg.isShopper,
+        );
+      }
+      final refreshed = await repository.getChatMessages(orderId: arg.orderId);
+      state = AsyncData(current.copyWith(messages: refreshed, isSending: false));
+    } catch (_) {
+      final withoutSending = state.valueOrNull;
+      if (withoutSending != null) {
+        state = AsyncData(withoutSending.copyWith(isSending: false));
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> sendTextMessage(String text, {String? replyToText}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
@@ -150,6 +190,7 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
       type: MessageType.text,
       time: DateTime.now(),
       text: trimmed,
+      replyToText: replyToText,
     );
 
     state = AsyncData(current.copyWith(
