@@ -574,8 +574,7 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Where(x =>
                 x.ShopperId == shopperId &&
                 x.Status != OrderStatus.Delivered &&
-                x.Status != OrderStatus.Pending &&
-                x.Status != OrderStatus.Cancelled)
+                x.Status != OrderStatus.Pending)
             .OrderByDescending(x => (int)x.Status)
             .ThenByDescending(x => x.UpdatedAt)
             .ToListAsync(cancellationToken);
