@@ -1,7 +1,24 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function TopBar() {
   const [query, setQuery] = useState('');
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const displayName = user?.fullName?.trim() || 'Administrator';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase() ?? '')
+    .join('') || 'AD';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <header className="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 bg-white/85 backdrop-blur-md shadow-sm border-b border-neutral-100 flex justify-between items-center px-8">
@@ -36,11 +53,20 @@ export default function TopBar() {
         <div className="h-8 w-px bg-neutral-200" />
 
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-on-surface">Administrator</span>
+          <span className="text-sm font-semibold text-on-surface">{displayName}</span>
           <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
-            AD
+            {initials}
           </div>
         </div>
+
+        <button
+          onClick={handleLogout}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-bold uppercase tracking-wide hover:bg-red-50 transition-colors"
+          title="Log out"
+        >
+          <span className="material-symbols-outlined text-sm">logout</span>
+          Logout
+        </button>
       </div>
     </header>
   );
