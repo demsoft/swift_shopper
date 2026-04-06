@@ -36,6 +36,7 @@ public interface ISwiftShopperService
 
     /// <summary>Returns the shopper's current active job.</summary>
     Task<ActiveJobDto?> GetActiveJobAsync(string shopperId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ActiveJobDto>> GetActiveJobsAsync(string shopperId, CancellationToken cancellationToken);
 
     /// <summary>Shopper marks a single item as found or unavailable.</summary>
     Task<ActiveJobItemDto> UpdateOrderItemAsync(string orderId, int itemId, UpdateOrderItemDto dto, CancellationToken cancellationToken);

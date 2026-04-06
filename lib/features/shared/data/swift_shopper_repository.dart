@@ -434,6 +434,24 @@ class SwiftShopperRepository {
 
     if (data == null || data is! Map<String, dynamic>) return null;
 
+    return _mapActiveJobData(data);
+  }
+
+  Future<List<ActiveJobData>> getActiveJobs() async {
+    final data = await apiClient.get('/api/orders/shopper/active-jobs');
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(_mapActiveJobData)
+        .toList();
+  }
+
+  Future<void> finishShopping({required String orderId}) async {
+    await apiClient.post('/api/orders/$orderId/finish', {});
+  }
+
+  ActiveJobData _mapActiveJobData(Map<String, dynamic> data) {
     final rawItems = data['items'] as List? ?? [];
     final items =
         rawItems.map((i) {
@@ -472,10 +490,6 @@ class SwiftShopperRepository {
       shopperFee: (data['shopperFee'] as num? ?? 0).toDouble(),
       items: items,
     );
-  }
-
-  Future<void> finishShopping({required String orderId}) async {
-    await apiClient.post('/api/orders/$orderId/finish', {});
   }
 
   Future<void> startDelivery({required String orderId}) async {

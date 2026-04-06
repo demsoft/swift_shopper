@@ -582,23 +582,34 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(BuildActiveJobDto(order, request, dto.ShopperId, newItems));
     }
 
-    public Task<ActiveJobDto?> GetActiveJobAsync(string shopperId, CancellationToken cancellationToken)
+    public async Task<ActiveJobDto?> GetActiveJobAsync(string shopperId, CancellationToken cancellationToken)
     {
-        var order = _orders
+        var jobs = await GetActiveJobsAsync(shopperId, cancellationToken);
+        return jobs.FirstOrDefault();
+    }
+
+    public Task<IReadOnlyList<ActiveJobDto>> GetActiveJobsAsync(string shopperId, CancellationToken cancellationToken)
+    {
+        var orders = _orders
             .Where(o =>
                 o.ShopperId != null &&
                 o.ShopperId.Equals(shopperId, StringComparison.OrdinalIgnoreCase) &&
                 o.Status != OrderStatus.Delivered &&
-                o.Status != OrderStatus.Pending)
+                o.Status != OrderStatus.Pending &&
+                o.Status != OrderStatus.Cancelled)
             .OrderByDescending(o => o.UpdatedAt)
-            .FirstOrDefault();
+            .ToList();
 
-        if (order is null) return Task.FromResult<ActiveJobDto?>(null);
+        if (orders.Count == 0) return Task.FromResult<IReadOnlyList<ActiveJobDto>>([]);
 
-        var request = _requests.FirstOrDefault(r => r.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase));
-        var items = _orderItems.Where(i => i.OrderId.Equals(order.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+        var result = orders.Select(order =>
+        {
+            var request = _requests.FirstOrDefault(r => r.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase));
+            var items = _orderItems.Where(i => i.OrderId.Equals(order.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+            return BuildActiveJobDto(order, request, request?.CustomerId ?? string.Empty, items);
+        }).ToList();
 
-        return Task.FromResult<ActiveJobDto?>(BuildActiveJobDto(order, request, request?.CustomerId ?? string.Empty, items));
+        return Task.FromResult<IReadOnlyList<ActiveJobDto>>(result);
     }
 
     public Task<ActiveJobItemDto> UpdateOrderItemAsync(

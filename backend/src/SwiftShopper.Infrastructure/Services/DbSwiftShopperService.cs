@@ -563,30 +563,57 @@ public class DbSwiftShopperService : ISwiftShopperService
     public async Task<ActiveJobDto?> GetActiveJobAsync(
         string shopperId, CancellationToken cancellationToken)
     {
-        var order = await _dbContext.Orders
+        var jobs = await GetActiveJobsAsync(shopperId, cancellationToken);
+        return jobs.FirstOrDefault();
+    }
+
+    public async Task<IReadOnlyList<ActiveJobDto>> GetActiveJobsAsync(
+        string shopperId, CancellationToken cancellationToken)
+    {
+        var orders = await _dbContext.Orders.AsNoTracking()
             .Where(x =>
                 x.ShopperId == shopperId &&
                 x.Status != OrderStatus.Delivered &&
-                x.Status != OrderStatus.Pending)
+                x.Status != OrderStatus.Pending &&
+                x.Status != OrderStatus.Cancelled)
             .OrderByDescending(x => (int)x.Status)
             .ThenByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (order is null) return null;
-
-        var request = await _dbContext.ShoppingRequests.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == order.RequestId, cancellationToken);
-
-        var customer = request is not null
-            ? await _dbContext.UserAccounts.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == request.CustomerId, cancellationToken)
-            : null;
-
-        var items = await _dbContext.OrderItems.AsNoTracking()
-            .Where(x => x.OrderId == order.Id)
             .ToListAsync(cancellationToken);
 
-        return BuildActiveJobDto(order, request, order.ShopperName, customer?.FullName ?? string.Empty, customer?.AvatarUrl, items);
+        if (orders.Count == 0)
+            return [];
+
+        var requestIds = orders.Select(x => x.RequestId).Distinct().ToList();
+        var requests = await _dbContext.ShoppingRequests.AsNoTracking()
+            .Where(x => requestIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var customerIds = requests.Values.Select(x => x.CustomerId).Distinct().ToList();
+        var customers = await _dbContext.UserAccounts.AsNoTracking()
+            .Where(x => customerIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var orderIds = orders.Select(x => x.Id).ToList();
+        var items = await _dbContext.OrderItems.AsNoTracking()
+            .Where(x => orderIds.Contains(x.OrderId))
+            .ToListAsync(cancellationToken);
+        var itemsByOrderId = items.ToLookup(x => x.OrderId);
+
+        return orders.Select(order =>
+        {
+            requests.TryGetValue(order.RequestId, out var request);
+            UserAccount? customer = null;
+            if (request is not null)
+                customers.TryGetValue(request.CustomerId, out customer);
+
+            return BuildActiveJobDto(
+                order,
+                request,
+                order.ShopperName,
+                customer?.FullName ?? string.Empty,
+                customer?.AvatarUrl,
+                itemsByOrderId[order.Id].ToList());
+        }).ToList();
     }
 
     public async Task<ActiveJobItemDto> UpdateOrderItemAsync(

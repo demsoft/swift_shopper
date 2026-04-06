@@ -153,6 +153,22 @@ public static class OrdersEndpoints
             return job is null ? Results.NoContent() : Results.Ok(job);
         });
 
+        // GET /api/orders/shopper/active-jobs — shopper's active jobs list
+        group.MapGet("/shopper/active-jobs", async (
+            ClaimsPrincipal user,
+            ISwiftShopperService service,
+            CancellationToken cancellationToken) =>
+        {
+            var authenticatedShopperId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(authenticatedShopperId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var jobs = await service.GetActiveJobsAsync(authenticatedShopperId, cancellationToken);
+            return Results.Ok(jobs);
+        });
+
         // PATCH /api/orders/{orderId}/items/{itemId} — shopper updates a single item
         group.MapPatch("/{orderId}/items/{itemId:int}", async (
             string orderId,
