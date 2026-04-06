@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getOrders, type AdminOrderDto, type PagedResult } from '../lib/api';
+import { getOrders, updateOrderStatus, type AdminOrderDto, type PagedResult } from '../lib/api';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -116,20 +116,91 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [viewingImage, setViewingImage] = useState<{ url: string; name: string } | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [confirmingOrder, setConfirmingOrder] = useState<{ id: string; storeName: string } | null>(null);
 
-  useEffect(() => {
+  const loadOrders = () => {
     setLoading(true);
+    setError('');
     getOrders(statusFilter || undefined, currentPage, 20)
       .then(setResult)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadOrders();
   }, [currentPage, statusFilter]);
+
+  const completeOrder = async (orderId: string) => {
+    try {
+      setUpdatingOrderId(orderId);
+      await updateOrderStatus(orderId, 5); // 5 = Delivered/Completed
+      loadOrders();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to update order.';
+      setError(message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   const orders = result?.items ?? [];
   const totalPages = result?.totalPages ?? 1;
 
   return (
     <main className="pt-10 px-8 pb-12 min-h-screen bg-surface">
+      {confirmingOrder && (
+        <div
+          className="fixed inset-0 z-[210] bg-black/60 flex items-center justify-center px-4"
+          onClick={() => {
+            if (updatingOrderId !== confirmingOrder.id) {
+              setConfirmingOrder(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/20 p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-extrabold text-on-surface mb-2">Complete this order?</h3>
+            <p className="text-sm text-secondary mb-6">
+              This will mark order <span className="font-semibold text-on-surface">#{confirmingOrder.id.slice(-6).toUpperCase()}</span>
+              {' '}({confirmingOrder.storeName || 'Store'}) as completed.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setConfirmingOrder(null)}
+                disabled={updatingOrderId === confirmingOrder.id}
+                className="px-4 py-2 rounded-xl border border-outline-variant/30 text-on-surface text-sm font-semibold hover:bg-surface-container-low transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await completeOrder(confirmingOrder.id);
+                  setConfirmingOrder(null);
+                }}
+                disabled={updatingOrderId === confirmingOrder.id}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 inline-flex items-center gap-2"
+              >
+                {updatingOrderId === confirmingOrder.id ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    Updating
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">task_alt</span>
+                    Yes, complete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewingImage && (
         <div
           className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center"
@@ -297,9 +368,35 @@ export default function Orders() {
                   </td>
                   <td className="px-6 py-4 text-sm font-bold text-on-surface">{fmtNgn(order.total)}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-neutral-400 group-hover:text-on-surface">
-                      <span className="material-symbols-outlined">more_vert</span>
-                    </button>
+                    {order.status === 5 ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-neutral-200 text-neutral-600 uppercase tracking-wide">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Completed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          setConfirmingOrder({
+                            id: order.orderId,
+                            storeName: order.storeName,
+                          })
+                        }
+                        disabled={updatingOrderId === order.orderId}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {updatingOrderId === order.orderId ? (
+                          <>
+                            <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                            Updating
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">task_alt</span>
+                            Mark Complete
+                          </>
+                        )}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1229,10 +1229,44 @@ public class DbSwiftShopperService : ISwiftShopperService
             .Select(g => new { ShopperId = g.Key, Count = g.Count(), Earnings = g.Sum(o => o.DeliveryFee) })
             .ToDictionaryAsync(x => x.ShopperId, ct);
 
+        // Presence heuristic:
+        // - "Online" if shopper has an active job (Accepted/Shopping/Purchased/OutForDelivery)
+        //   updated in the last 20 minutes.
+        // - LastActiveAt is the latest order update timestamp for that shopper.
+        var activeCutoff = DateTimeOffset.UtcNow.AddMinutes(-20);
+        var activeJobStatuses = new[]
+        {
+            OrderStatus.Accepted,
+            OrderStatus.Shopping,
+            OrderStatus.Purchased,
+            OrderStatus.OutForDelivery
+        };
+
+        var latestActiveJobUpdate = await _dbContext.Orders.AsNoTracking()
+            .Where(x =>
+                x.ShopperId != null &&
+                shopperIds.Contains(x.ShopperId) &&
+                activeJobStatuses.Contains(x.Status))
+            .GroupBy(x => x.ShopperId!)
+            .Select(g => new { ShopperId = g.Key, LastUpdatedAt = g.Max(o => o.UpdatedAt) })
+            .ToDictionaryAsync(x => x.ShopperId, x => x.LastUpdatedAt, ct);
+
+        var latestAnyOrderUpdate = await _dbContext.Orders.AsNoTracking()
+            .Where(x => x.ShopperId != null && shopperIds.Contains(x.ShopperId))
+            .GroupBy(x => x.ShopperId!)
+            .Select(g => new { ShopperId = g.Key, LastUpdatedAt = g.Max(o => o.UpdatedAt) })
+            .ToDictionaryAsync(x => x.ShopperId, x => x.LastUpdatedAt, ct);
+
         var dtos = shoppers.Select(s =>
         {
             completedCounts.TryGetValue(s.Id, out var completed);
             monthCounts.TryGetValue(s.Id, out var month);
+            latestActiveJobUpdate.TryGetValue(s.Id, out var lastActiveJobAt);
+            latestAnyOrderUpdate.TryGetValue(s.Id, out var lastSeenAt);
+            var isOnline = s.IsActive &&
+                lastActiveJobAt != default &&
+                lastActiveJobAt >= activeCutoff;
+
             return new AdminShopperDto
             {
                 ShopperId = s.Id,
@@ -1241,7 +1275,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 AvatarUrl = s.AvatarUrl,
                 Email = s.Email,
                 PhoneNumber = s.PhoneNumber,
-                IsOnline = false,
+                IsOnline = isOnline,
                 IsVerified = s.IsActive,
                 IsActive = s.IsActive,
                 Tier = completed >= 50 ? "PRO SHOPPER" : "BASIC",
@@ -1250,7 +1284,7 @@ public class DbSwiftShopperService : ISwiftShopperService
                 OrdersThisMonth = month?.Count ?? 0,
                 EarningsThisMonth = month?.Earnings ?? 0m,
                 JoinedAt = s.CreatedAt,
-                LastActiveAt = null
+                LastActiveAt = lastSeenAt == default ? null : lastSeenAt
             };
         }).ToList();
 

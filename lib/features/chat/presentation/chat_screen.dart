@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
@@ -31,9 +32,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   ChatMessage? _replyingTo;
+  bool _hasTypedText = false;
+
+  void _handleTextChanged() {
+    final next = _controller.text.trim().isNotEmpty;
+    if (_hasTypedText == next) return;
+    setState(() => _hasTypedText = next);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_handleTextChanged);
+    _hasTypedText = _controller.text.trim().isNotEmpty;
+  }
 
   @override
   void dispose() {
+    _controller.removeListener(_handleTextChanged);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -182,6 +198,68 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Future<void> _openFile(String? url) async {
+    final value = url?.trim();
+    if (value == null || value.isEmpty) return;
+
+    final opened = await launchUrlString(value, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open file link.')),
+      );
+    }
+  }
+
+  void _openImagePreview(String imageUrl) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.black87,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(16),
+                    child: const Text(
+                      'Unable to load image.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatAsync = ref.watch(chatProvider(_args));
@@ -251,6 +329,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           imageUrl: msg.imageUrl ?? '',
                           time: timeStr,
                           isSent: isSent,
+                          onTap: () => _openImagePreview(msg.imageUrl ?? ''),
+                        );
+                      } else if (msg.type == MessageType.file) {
+                        bubble = _FileBubble(
+                          fileName: msg.fileName ?? 'Attachment',
+                          fileUrl: msg.fileUrl ?? '',
+                          time: timeStr,
+                          isSent: isSent,
+                          onTap: () => _openFile(msg.fileUrl),
                         );
                       } else if (isSent) {
                         bubble = _SentBubble(
@@ -448,18 +535,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: isSending ? null : () => _pickImage(ImageSource.camera),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF5F6F4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      color: Color(0xFF6B7280), size: 22),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                width: _hasTypedText ? 8 : 52,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _hasTypedText
+                      ? const SizedBox.shrink()
+                      : GestureDetector(
+                          onTap: isSending ? null : () => _pickImage(ImageSource.camera),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF5F6F4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded,
+                                color: Color(0xFF6B7280), size: 22),
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -498,6 +594,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     _controller.selection = TextSelection.fromPosition(
                       TextPosition(offset: _controller.text.length),
                     );
+                    _handleTextChanged();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -508,6 +605,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     _controller.selection = TextSelection.fromPosition(
                       TextPosition(offset: _controller.text.length),
                     );
+                    _handleTextChanged();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -518,6 +616,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     _controller.selection = TextSelection.fromPosition(
                       TextPosition(offset: _controller.text.length),
                     );
+                    _handleTextChanged();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -528,6 +627,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     _controller.selection = TextSelection.fromPosition(
                       TextPosition(offset: _controller.text.length),
                     );
+                    _handleTextChanged();
                   },
                 ),
               ],
@@ -687,17 +787,20 @@ class _ReceivedBubble extends StatelessWidget {
 // ===========================================================================
 class _ImageBubble extends StatelessWidget {
   const _ImageBubble(
-      {required this.imageUrl, required this.time, required this.isSent});
+      {required this.imageUrl, required this.time, required this.isSent, this.onTap});
 
   final String imageUrl;
   final String time;
   final bool isSent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         constraints:
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
         decoration: BoxDecoration(
@@ -745,6 +848,88 @@ class _ImageBubble extends StatelessWidget {
                       fontSize: 11, color: Color(0xFF9A9C97))),
             ),
           ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+class _FileBubble extends StatelessWidget {
+  const _FileBubble({
+    required this.fileName,
+    required this.fileUrl,
+    required this.time,
+    required this.isSent,
+    required this.onTap,
+  });
+
+  final String fileName;
+  final String fileUrl;
+  final String time;
+  final bool isSent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints:
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          decoration: BoxDecoration(
+            color: isSent ? const Color(0xFFE7F7EF) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(color: const Color(0xFFDDE5DE)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.insert_drive_file_rounded,
+                      size: 18, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D1512),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Tap to view/download',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                time,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF9A9C97)),
+              ),
+            ],
+          ),
         ),
       ),
     );

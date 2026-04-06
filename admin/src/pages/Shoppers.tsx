@@ -6,6 +6,7 @@ import { getShoppers, updateShopperStatus, type AdminShopperDto, type PagedResul
 type VerifStatus = 'Verified' | 'Pending' | 'Action Required';
 type OnlineStatus = 'Online' | 'In Job' | 'Offline';
 type Tier = 'Gold Elite' | 'Silver Plus' | 'Bronze';
+type OnlineFilter = 'all' | 'online' | 'offline';
 
 function toTier(tier: string, completed: number): Tier {
   if (tier === 'PRO SHOPPER' || completed >= 100) return 'Gold Elite';
@@ -100,6 +101,7 @@ function RowActions({ shopperId, isActive, onToggle }: { shopperId: string; isAc
 
 export default function Shoppers() {
   const [tab, setTab] = useState<'all' | 'pending'>('all');
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [result, setResult] = useState<PagedResult<AdminShopperDto> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,7 +118,14 @@ export default function Shoppers() {
 
   useEffect(() => { load(); }, [tab, currentPage]);
 
-  const displayed = result?.items ?? [];
+  const rawItems = result?.items ?? [];
+  const displayed = rawItems.filter((s) => {
+    if (onlineFilter === 'online') return s.isOnline;
+    if (onlineFilter === 'offline') return !s.isOnline;
+    return true;
+  });
+  const onlineCount = rawItems.filter((s) => s.isOnline).length;
+  const offlineCount = rawItems.filter((s) => !s.isOnline).length;
 
   return (
     <section className="pt-10 pb-12 px-10 min-h-screen">
@@ -198,12 +207,43 @@ export default function Shoppers() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] uppercase tracking-wider font-bold text-secondary">Status</label>
               <div className="flex gap-2">
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">Online</span>
-                <span className="px-3 py-1 bg-neutral-100 text-neutral-500 text-[10px] font-bold rounded-full">Offline</span>
+                <button
+                  onClick={() => setOnlineFilter('all')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-full transition-colors ${
+                    onlineFilter === 'all'
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-container-high text-secondary hover:bg-surface-container-highest'
+                  }`}
+                >
+                  All ({rawItems.length})
+                </button>
+                <button
+                  onClick={() => setOnlineFilter('online')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-full transition-colors ${
+                    onlineFilter === 'online'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  }`}
+                >
+                  Online ({onlineCount})
+                </button>
+                <button
+                  onClick={() => setOnlineFilter('offline')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-full transition-colors ${
+                    onlineFilter === 'offline'
+                      ? 'bg-neutral-700 text-white'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                  }`}
+                >
+                  Offline ({offlineCount})
+                </button>
               </div>
             </div>
           </div>
-          <button className="text-emerald-600 text-xs font-bold hover:underline flex items-center gap-1">
+          <button
+            onClick={() => setOnlineFilter('all')}
+            className="text-emerald-600 text-xs font-bold hover:underline flex items-center gap-1"
+          >
             <span className="material-symbols-outlined text-sm">filter_list</span>
             Reset Filters
           </button>

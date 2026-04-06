@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -607,7 +608,16 @@ class SwiftShopperRepository {
         senderRaw == 'customer' ? SenderType.customer : SenderType.shopper;
 
     final typeRaw = map['type']?.toString().toLowerCase() ?? 'text';
-    final type = typeRaw == 'image' ? MessageType.image : MessageType.text;
+    final decodedTextPayload = _decodeReplyPayload(map['text']?.toString());
+    final text = decodedTextPayload.$1;
+    final replyToText = decodedTextPayload.$2;
+    final filePayload = _parseFilePayload(text);
+    final type =
+        typeRaw == 'image'
+            ? MessageType.image
+            : filePayload != null
+            ? MessageType.file
+            : MessageType.text;
 
     return ChatMessage(
       id:
@@ -617,21 +627,72 @@ class SwiftShopperRepository {
       type: type,
       time:
           DateTime.tryParse(map['sentAt']?.toString() ?? '') ?? DateTime.now(),
-      text: map['text']?.toString(),
+      text: text,
       imageUrl: map['imageUrl']?.toString(),
+      fileName: filePayload?.$1,
+      fileUrl: filePayload?.$2,
+      replyToText: replyToText,
     );
+  }
+
+  static const String _replyPrefix = '__ss_reply__:';
+
+  String _encodeReplyPayload(String text, String? replyToText) {
+    final reply = replyToText?.trim();
+    if (reply == null || reply.isEmpty) {
+      return text;
+    }
+    final encoded = base64Encode(utf8.encode(reply));
+    return '$_replyPrefix$encoded\n$text';
+  }
+
+  (String?, String?) _decodeReplyPayload(String? raw) {
+    if (raw == null) return (null, null);
+    if (!raw.startsWith(_replyPrefix)) return (raw, null);
+
+    final firstBreak = raw.indexOf('\n');
+    if (firstBreak <= _replyPrefix.length) {
+      return (raw, null);
+    }
+
+    final encoded = raw.substring(_replyPrefix.length, firstBreak).trim();
+    final messageText = raw.substring(firstBreak + 1);
+    try {
+      final reply = utf8.decode(base64Decode(encoded));
+      return (messageText, reply);
+    } catch (_) {
+      return (messageText, null);
+    }
+  }
+
+  (String, String)? _parseFilePayload(String? text) {
+    if (text == null) return null;
+    final trimmed = text.trim();
+    if (!trimmed.startsWith('📎')) return null;
+
+    final urlMatch = RegExp(r'https?://\S+').firstMatch(trimmed);
+    if (urlMatch == null) return null;
+
+    final url = urlMatch.group(0);
+    if (url == null || url.isEmpty) return null;
+
+    final firstLine = trimmed.split('\n').first.replaceFirst('📎', '').trim();
+    final fileName = firstLine.isNotEmpty ? firstLine : 'Attachment';
+    return (fileName, url);
   }
 
   Future<void> sendTextMessage({
     required String text,
     String? orderId,
     bool isShopper = false,
+    String? replyToText,
   }) async {
+    final payloadText = _encodeReplyPayload(text, replyToText);
     await apiClient
         .post('/api/orders/${orderId ?? AppEnv.orderId}/chat/messages', {
           'sender': isShopper ? 'shopper' : 'customer',
           'type': 'text',
-          'text': text,
+          'text': payloadText,
           'imageUrl': null,
         });
   }

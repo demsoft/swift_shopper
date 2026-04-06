@@ -204,6 +204,7 @@ class ChatNotifier extends FamilyAsyncNotifier<ChatState, ChatArgs> {
         text: trimmed,
         orderId: arg.orderId,
         isShopper: arg.isShopper,
+        replyToText: replyToText,
       );
 
       // Replace optimistic message with the real one from server

@@ -1,6 +1,6 @@
 enum SenderType { shopper, customer }
 
-enum MessageType { text, image, priceCard }
+enum MessageType { text, image, file, priceCard }
 
 class ChatMessage {
   const ChatMessage({
@@ -10,6 +10,8 @@ class ChatMessage {
     required this.time,
     this.text,
     this.imageUrl,
+    this.fileName,
+    this.fileUrl,
     this.priceCardData,
     this.replyToText,
   });
@@ -20,6 +22,8 @@ class ChatMessage {
   final DateTime time;
   final String? text;
   final String? imageUrl;
+  final String? fileName;
+  final String? fileUrl;
   final PriceCardData? priceCardData;
   /// Snippet of the message being replied to (local only, not persisted).
   final String? replyToText;
