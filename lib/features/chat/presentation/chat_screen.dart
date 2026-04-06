@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -822,6 +823,90 @@ class _AttachOption extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: Color(0xFF0D1512),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwipeToReply extends StatefulWidget {
+  const _SwipeToReply({
+    required this.child,
+    required this.onReply,
+  });
+
+  final Widget child;
+  final VoidCallback onReply;
+
+  @override
+  State<_SwipeToReply> createState() => _SwipeToReplyState();
+}
+
+class _SwipeToReplyState extends State<_SwipeToReply> {
+  static const double _maxOffset = 86;
+  static const double _triggerOffset = 62;
+
+  double _offset = 0;
+  bool _triggered = false;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    final next = (_offset + details.delta.dx).clamp(0.0, _maxOffset);
+
+    if (!_triggered && next >= _triggerOffset) {
+      _triggered = true;
+      HapticFeedback.lightImpact();
+      widget.onReply();
+    } else if (_triggered && next < (_triggerOffset * 0.5)) {
+      _triggered = false;
+    }
+
+    setState(() => _offset = next);
+  }
+
+  void _handleDragEnd() {
+    setState(() {
+      _offset = 0;
+      _triggered = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (_offset / _triggerOffset).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: _handleDragUpdate,
+      onHorizontalDragEnd: (_) => _handleDragEnd(),
+      onHorizontalDragCancel: _handleDragEnd,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          Positioned(
+            left: 8,
+            child: Opacity(
+              opacity: progress,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.reply_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_offset, 0, 0),
+            child: widget.child,
           ),
         ],
       ),
