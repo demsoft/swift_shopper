@@ -66,7 +66,7 @@ public interface ISwiftShopperService
 
     // ── Admin: Orders ─────────────────────────────────────────────────────────
     Task<PagedResult<AdminOrderDto>> GetAdminOrdersAsync(string? status, int page, int pageSize, CancellationToken cancellationToken);
-    Task<AdminOrderDto?> GetAdminOrderAsync(string orderId, CancellationToken cancellationToken);
+    Task<AdminOrderDetailDto?> GetAdminOrderAsync(string orderId, CancellationToken cancellationToken);
     Task<Order> UpdateAdminOrderStatusAsync(string orderId, UpdateOrderStatusDto dto, CancellationToken cancellationToken);
 
     // ── Admin: Shoppers ───────────────────────────────────────────────────────

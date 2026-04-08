@@ -71,6 +71,26 @@ public record AdminOrderDto
     public DateTimeOffset UpdatedAt { get; init; }
 }
 
+public record AdminOrderItemDto
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Unit { get; init; } = string.Empty;
+    public int Quantity { get; init; }
+    public decimal EstimatedPrice { get; init; }
+    public decimal? FoundPrice { get; init; }
+
+    /// <summary>0 = Pending, 1 = Found, 2 = Unavailable</summary>
+    public int Status { get; init; }
+
+    public string? PhotoUrl { get; init; }
+}
+
+public record AdminOrderDetailDto : AdminOrderDto
+{
+    public IReadOnlyList<AdminOrderItemDto> Items { get; init; } = [];
+}
+
 // ── Shoppers ──────────────────────────────────────────────────────────────────
 
 public record AdminShopperDto

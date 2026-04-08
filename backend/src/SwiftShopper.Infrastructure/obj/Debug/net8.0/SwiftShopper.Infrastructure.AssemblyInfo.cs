@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SwiftShopper.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5ee63345ca8d606c8b1adfd1b5707d05d1a8f6e5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+87f999e4cfc9c8c7e5c96ae410538396c1271ff2")]
 [assembly: System.Reflection.AssemblyProductAttribute("SwiftShopper.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SwiftShopper.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

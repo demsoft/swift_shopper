@@ -125,6 +125,21 @@ export interface AdminOrderDto {
   updatedAt: string;
 }
 
+export interface AdminOrderItemDto {
+  id: number;
+  name: string;
+  unit: string;
+  quantity: number;
+  estimatedPrice: number;
+  foundPrice: number | null;
+  status: number; // 0=Pending, 1=Found, 2=Unavailable
+  photoUrl: string | null;
+}
+
+export interface AdminOrderDetailDto extends AdminOrderDto {
+  items: AdminOrderItemDto[];
+}
+
 export interface PagedResult<T> {
   items: T[];
   totalCount: number;
@@ -137,6 +152,10 @@ export function getOrders(status?: string, page = 1, pageSize = 20): Promise<Pag
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (status) params.set('status', status);
   return request(`/api/admin/orders?${params}`);
+}
+
+export function getOrderDetail(orderId: string): Promise<AdminOrderDetailDto> {
+  return request(`/api/admin/orders/${orderId}`);
 }
 
 export function updateOrderStatus(orderId: string, status: number) {

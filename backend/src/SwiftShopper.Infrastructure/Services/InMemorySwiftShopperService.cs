@@ -872,14 +872,14 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         });
     }
 
-    public Task<AdminOrderDto?> GetAdminOrderAsync(string orderId, CancellationToken cancellationToken)
+    public Task<AdminOrderDetailDto?> GetAdminOrderAsync(string orderId, CancellationToken cancellationToken)
     {
         var o = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));
-        if (o is null) return Task.FromResult<AdminOrderDto?>(null);
+        if (o is null) return Task.FromResult<AdminOrderDetailDto?>(null);
 
         var req     = _requests.FirstOrDefault(r => r.Id == o.RequestId);
         var shopper = _shoppers.FirstOrDefault(s => s.Id == o.ShopperId);
-        return Task.FromResult<AdminOrderDto?>(new AdminOrderDto
+        return Task.FromResult<AdminOrderDetailDto?>(new AdminOrderDetailDto
         {
             OrderId          = o.Id,
             CustomerName     = "Customer",
@@ -891,7 +891,8 @@ public class InMemorySwiftShopperService : ISwiftShopperService
             MarketIcon       = "storefront",
             Status           = o.Status,
             Total            = o.TotalAmount,
-            UpdatedAt        = o.UpdatedAt
+            UpdatedAt        = o.UpdatedAt,
+            Items            = []
         });
     }
 

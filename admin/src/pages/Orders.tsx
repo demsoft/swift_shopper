@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getOrders, updateOrderStatus, type AdminOrderDto, type PagedResult } from '../lib/api';
+import { getOrders, getOrderDetail, updateOrderStatus, type AdminOrderDto, type AdminOrderItemDto, type AdminOrderDetailDto, type PagedResult } from '../lib/api';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -107,6 +107,100 @@ function ShopperCell({
   );
 }
 
+const ITEM_STATUS_MAP: Record<number, { label: string; cls: string }> = {
+  0: { label: 'Pending',     cls: 'bg-orange-100 text-orange-700' },
+  1: { label: 'Found',       cls: 'bg-emerald-100 text-emerald-700' },
+  2: { label: 'Unavailable', cls: 'bg-red-100 text-red-700' },
+};
+
+function OrderItemsRow({ orderId, onViewImage }: { orderId: string; onViewImage: (url: string, name: string) => void }) {
+  const [detail, setDetail] = useState<AdminOrderDetailDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    getOrderDetail(orderId)
+      .then(setDetail)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <tr>
+        <td colSpan={8} className="px-6 pb-4 bg-surface-container-low">
+          <div className="flex items-center gap-2 text-xs text-secondary py-2">
+            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            Loading items...
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  if (error || !detail || detail.items.length === 0) {
+    return (
+      <tr>
+        <td colSpan={8} className="px-6 pb-4 bg-surface-container-low">
+          <p className="text-xs text-secondary italic py-2">{error || 'No items found for this order.'}</p>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td colSpan={8} className="px-6 pb-5 pt-0 bg-surface-container-low border-b border-outline-variant/10">
+        <div className="rounded-xl border border-outline-variant/20 overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-surface-container-high">
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Item</th>
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Qty / Unit</th>
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Est. Price</th>
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Found Price</th>
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Status</th>
+                <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-secondary">Photo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container-high">
+              {detail.items.map((item: AdminOrderItemDto) => {
+                const s = ITEM_STATUS_MAP[item.status] ?? { label: 'Unknown', cls: 'bg-neutral-100 text-neutral-500' };
+                return (
+                  <tr key={item.id} className="bg-white hover:bg-primary/5 transition-colors">
+                    <td className="px-4 py-2.5 text-sm font-semibold text-on-surface">{item.name}</td>
+                    <td className="px-4 py-2.5 text-sm text-secondary">{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
+                    <td className="px-4 py-2.5 text-sm text-on-surface">{fmtNgn(item.estimatedPrice)}</td>
+                    <td className="px-4 py-2.5 text-sm text-on-surface">
+                      {item.foundPrice != null ? fmtNgn(item.foundPrice) : <span className="text-secondary italic">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${s.cls}`}>{s.label}</span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {item.photoUrl ? (
+                        <img
+                          src={item.photoUrl}
+                          alt={item.name}
+                          className="w-8 h-8 rounded-lg object-cover cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          onClick={() => onViewImage(item.photoUrl!, item.name)}
+                        />
+                      ) : (
+                        <span className="text-secondary italic text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Orders() {
@@ -118,6 +212,7 @@ export default function Orders() {
   const [viewingImage, setViewingImage] = useState<{ url: string; name: string } | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [confirmingOrder, setConfirmingOrder] = useState<{ id: string; storeName: string } | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const loadOrders = () => {
     setLoading(true);
@@ -300,6 +395,7 @@ export default function Orders() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low">
+                <th className="px-4 py-4 w-10 border-b border-outline-variant/10" />
                 {['Order ID', 'Customer', 'Shopper', 'Market/Store', 'Status', 'Total', 'Actions'].map((h, i) => (
                   <th key={h} className={`px-6 py-4 text-xs font-bold uppercase tracking-[0.05em] text-secondary border-b border-outline-variant/10 ${i === 6 ? 'text-right' : ''}`}>
                     {h}
@@ -310,7 +406,7 @@ export default function Orders() {
             <tbody className="divide-y divide-surface-container-low">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-secondary">
+                  <td colSpan={8} className="px-6 py-16 text-center text-secondary">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
                       <span className="text-sm">Loading orders...</span>
@@ -319,17 +415,24 @@ export default function Orders() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-red-600 text-sm">{error}</td>
+                  <td colSpan={8} className="px-6 py-10 text-center text-red-600 text-sm">{error}</td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-secondary text-sm">No orders found.</td>
+                  <td colSpan={8} className="px-6 py-10 text-center text-secondary text-sm">No orders found.</td>
                 </tr>
               ) : orders.map((order: AdminOrderDto, idx: number) => (
+                <>
                 <tr
                   key={order.orderId}
-                  className={`hover:bg-primary/5 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-surface-container-low'}`}
+                  className={`hover:bg-primary/5 transition-colors group cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-surface-container-low'}`}
+                  onClick={() => setExpandedOrderId(prev => prev === order.orderId ? null : order.orderId)}
                 >
+                  <td className="px-4 py-4 w-10">
+                    <span className={`material-symbols-outlined text-sm text-secondary transition-transform duration-200 ${expandedOrderId === order.orderId ? 'rotate-90' : ''}`}>
+                      chevron_right
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-sm font-bold text-on-surface">#{order.orderId.slice(-6).toUpperCase()}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -375,12 +478,13 @@ export default function Orders() {
                       </span>
                     ) : (
                       <button
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setConfirmingOrder({
                             id: order.orderId,
                             storeName: order.storeName,
-                          })
-                        }
+                          });
+                        }}
                         disabled={updatingOrderId === order.orderId}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
@@ -399,6 +503,14 @@ export default function Orders() {
                     )}
                   </td>
                 </tr>
+                {expandedOrderId === order.orderId && (
+                  <OrderItemsRow
+                    key={`items-${order.orderId}`}
+                    orderId={order.orderId}
+                    onViewImage={(url, name) => setViewingImage({ url, name })}
+                  />
+                )}
+                </>
               ))}
             </tbody>
           </table>

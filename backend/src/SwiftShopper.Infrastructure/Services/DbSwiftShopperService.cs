@@ -1152,7 +1152,7 @@ public class DbSwiftShopperService : ISwiftShopperService
         };
     }
 
-    public async Task<AdminOrderDto?> GetAdminOrderAsync(string orderId, CancellationToken ct)
+    public async Task<AdminOrderDetailDto?> GetAdminOrderAsync(string orderId, CancellationToken ct)
     {
         var o = await _dbContext.Orders.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == orderId, ct);
@@ -1169,8 +1169,24 @@ public class DbSwiftShopperService : ISwiftShopperService
                 .FirstOrDefaultAsync(x => x.Id == o.ShopperId, ct)
             : null;
 
+        var items = await _dbContext.OrderItems.AsNoTracking()
+            .Where(i => i.OrderId == orderId)
+            .OrderBy(i => i.Id)
+            .Select(i => new AdminOrderItemDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                Unit = i.Unit,
+                Quantity = i.Quantity,
+                EstimatedPrice = i.EstimatedPrice,
+                FoundPrice = i.FoundPrice,
+                Status = (int)i.Status,
+                PhotoUrl = i.PhotoUrl
+            })
+            .ToListAsync(ct);
+
         var name = cust?.FullName ?? "Unknown";
-        return new AdminOrderDto
+        return new AdminOrderDetailDto
         {
             OrderId = o.Id,
             CustomerName = name,
@@ -1184,7 +1200,8 @@ public class DbSwiftShopperService : ISwiftShopperService
             MarketIcon = "storefront",
             Status = o.Status,
             Total = o.TotalAmount,
-            UpdatedAt = o.UpdatedAt
+            UpdatedAt = o.UpdatedAt,
+            Items = items
         };
     }
 
