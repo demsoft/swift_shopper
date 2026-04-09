@@ -83,6 +83,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
         final json = jsonDecode(response.body);
         final results = (json['results'] as List?)
                 ?.map((item) => AddressSuggestion.fromJson(item))
+                .where((s) => !(s.latitude == 0.0 && s.longitude == 0.0))
                 .toList() ??
             [];
 

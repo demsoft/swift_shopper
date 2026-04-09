@@ -1082,7 +1082,19 @@ public class InMemorySwiftShopperService : ISwiftShopperService
     // ── Public: Markets ───────────────────────────────────────────────────────
 
     public Task<IReadOnlyList<MarketDto>> GetPublicMarketsAsync(string? type, CancellationToken cancellationToken)
-        => Task.FromResult<IReadOnlyList<MarketDto>>(Array.Empty<MarketDto>());
+    {
+        var query = _markets.Where(m => m.IsActive).AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(type))
+            query = query.Where(m => m.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
+
+        var results = query
+            .OrderBy(m => m.Name)
+            .Select(ToPublicMarketDto)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<MarketDto>>(results);
+    }
 
     // ── Admin: Markets ────────────────────────────────────────────────────────
 
@@ -1221,12 +1233,12 @@ public class InMemorySwiftShopperService : ISwiftShopperService
 
         _markets.AddRange(
         [
-            new Market { Id = "MK-9901-LKI", Name = "Ebeano Supermarket", Type = "Supermarket", Location = "Lekki Phase 1",   Zone = "Lekki",    Address = "14 Admiralty Way, Lekki Phase 1",  IsActive = true,  Categories = ["Groceries", "Bakery"],           OpeningTime = "07:00", ClosingTime = "22:00", GeofenceRadiusKm = 4.0 },
-            new Market { Id = "MK-2245-IKJ", Name = "Mile 12 Market",     Type = "OpenMarket",  Location = "Ketu, Ikeja",     Zone = "Mainland", Address = "Mile 12 Road, Ketu, Lagos",         IsActive = true,  Categories = ["Wholesale", "Fresh Produce"],     OpeningTime = "06:00", ClosingTime = "19:00", GeofenceRadiusKm = 7.0 },
-            new Market { Id = "MK-4412-VI",  Name = "The Wine Shop",       Type = "Specialty",   Location = "Victoria Island",  Zone = "Island",   Address = "27 Adeola Odeku St, V/I",           IsActive = false, Categories = ["Beverages", "Gifts"],             OpeningTime = "10:00", ClosingTime = "21:00", GeofenceRadiusKm = 2.0 },
-            new Market { Id = "MK-1108-IKJ", Name = "Spar Market",         Type = "Supermarket", Location = "Ikeja Mall",       Zone = "Mainland", Address = "Ikeja City Mall, Oba Akran Ave",    IsActive = true,  Categories = ["Electronics", "General"],         OpeningTime = "09:00", ClosingTime = "21:00", GeofenceRadiusKm = 3.5 },
-            new Market { Id = "MK-3310-IS",  Name = "Balogun Market",      Type = "OpenMarket",  Location = "Lagos Island",     Zone = "Island",   Address = "Balogun St, Lagos Island",          IsActive = true,  Categories = ["Fabric", "Fashion", "Food"],      OpeningTime = "07:00", ClosingTime = "18:00", GeofenceRadiusKm = 5.0 },
-            new Market { Id = "MK-5521-SU",  Name = "Shoprite Surulere",   Type = "Supermarket", Location = "Surulere",         Zone = "Mainland", Address = "Adeniran Ogunsanya Mall, Surulere", IsActive = true,  Categories = ["Groceries", "Home"],              OpeningTime = "09:00", ClosingTime = "21:00", GeofenceRadiusKm = 4.5 },
+            new Market { Id = "MK-9901-LKI", Name = "Ebeano Supermarket", Type = "Supermarket", Location = "Lekki Phase 1",   Zone = "Lekki",    Address = "14 Admiralty Way, Lekki Phase 1",  IsActive = true,  Categories = ["Groceries", "Bakery"],           OpeningTime = "07:00", ClosingTime = "22:00", GeofenceRadiusKm = 4.0, Latitude = 6.4488,  Longitude = 3.5342 },
+            new Market { Id = "MK-2245-IKJ", Name = "Mile 12 Market",     Type = "OpenMarket",  Location = "Ketu, Ikeja",     Zone = "Mainland", Address = "Mile 12 Road, Ketu, Lagos",         IsActive = true,  Categories = ["Wholesale", "Fresh Produce"],     OpeningTime = "06:00", ClosingTime = "19:00", GeofenceRadiusKm = 7.0, Latitude = 6.5920,  Longitude = 3.3920 },
+            new Market { Id = "MK-4412-VI",  Name = "The Wine Shop",       Type = "Specialty",   Location = "Victoria Island",  Zone = "Island",   Address = "27 Adeola Odeku St, V/I",           IsActive = false, Categories = ["Beverages", "Gifts"],             OpeningTime = "10:00", ClosingTime = "21:00", GeofenceRadiusKm = 2.0, Latitude = 6.4301,  Longitude = 3.4271 },
+            new Market { Id = "MK-1108-IKJ", Name = "Spar Market",         Type = "Supermarket", Location = "Ikeja Mall",       Zone = "Mainland", Address = "Ikeja City Mall, Oba Akran Ave",    IsActive = true,  Categories = ["Electronics", "General"],         OpeningTime = "09:00", ClosingTime = "21:00", GeofenceRadiusKm = 3.5, Latitude = 6.5733,  Longitude = 3.3639 },
+            new Market { Id = "MK-3310-IS",  Name = "Balogun Market",      Type = "OpenMarket",  Location = "Lagos Island",     Zone = "Island",   Address = "Balogun St, Lagos Island",          IsActive = true,  Categories = ["Fabric", "Fashion", "Food"],      OpeningTime = "07:00", ClosingTime = "18:00", GeofenceRadiusKm = 5.0, Latitude = 6.4884,  Longitude = 3.3755 },
+            new Market { Id = "MK-5521-SU",  Name = "Shoprite Surulere",   Type = "Supermarket", Location = "Surulere",         Zone = "Mainland", Address = "Adeniran Ogunsanya Mall, Surulere", IsActive = true,  Categories = ["Groceries", "Home"],              OpeningTime = "09:00", ClosingTime = "21:00", GeofenceRadiusKm = 4.5, Latitude = 6.4960,  Longitude = 3.3495 },
         ]);
 
         _payouts.AddRange(
@@ -1311,9 +1323,28 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         OpeningTime      = m.OpeningTime,
         ClosingTime      = m.ClosingTime,
         GeofenceRadiusKm = m.GeofenceRadiusKm,
+        PhotoUrl         = m.PhotoUrl,
+        Latitude         = m.Latitude,
+        Longitude        = m.Longitude,
         ActiveShoppers   = 0,   // would be computed from live data
         OrdersToday      = 0,
         CreatedAt        = m.CreatedAt
+    };
+
+    private static MarketDto ToPublicMarketDto(Market m) => new()
+    {
+        MarketId = m.Id,
+        Name = m.Name,
+        Type = m.Type,
+        Location = m.Location,
+        Address = m.Address,
+        Categories = m.Categories,
+        OpeningTime = m.OpeningTime,
+        ClosingTime = m.ClosingTime,
+        GeofenceRadiusKm = m.GeofenceRadiusKm,
+        PhotoUrl = m.PhotoUrl,
+        Latitude = m.Latitude,
+        Longitude = m.Longitude,
     };
 
     // ── Private helpers ───────────────────────────────────────────────────────

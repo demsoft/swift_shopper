@@ -71,6 +71,14 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   }
 
   void _submit() {
+    if (_deliveryLatitude == 0 || _deliveryLongitude == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a delivery address from the suggestions.'),
+        ),
+      );
+      return;
+    }
     final budget = double.tryParse(_budgetController.text.trim()) ?? 0.0;
     Navigator.of(context).push(
       MaterialPageRoute<void>(

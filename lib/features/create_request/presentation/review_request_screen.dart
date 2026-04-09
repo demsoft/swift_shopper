@@ -60,6 +60,7 @@ class ReviewRequestScreen extends ConsumerWidget {
   }
 
   double _getDeliveryFee() {
+    debugPrint('[DeliveryFee] marketLat=$marketLatitude, marketLng=$marketLongitude, deliveryLat=$deliveryLatitude, deliveryLng=$deliveryLongitude');
     // If market or delivery coordinates are not available, use minimum fee
     if (marketLatitude == null ||
         marketLongitude == null ||
