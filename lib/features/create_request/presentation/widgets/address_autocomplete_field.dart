@@ -17,13 +17,6 @@ class AddressSuggestion {
     required this.longitude,
   });
 
-  factory AddressSuggestion.fromJson(Map<String, dynamic> json) {
-    return AddressSuggestion(
-      address: json['address'] ?? '',
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
 }
 
 class AddressAutocompleteField extends StatefulWidget {
@@ -61,6 +54,8 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
     super.dispose();
   }
 
+  bool _suppressSearch = false;
+
   Future<void> _searchAddresses(String query) async {
     if (query.length < 3) {
       setState(() {
@@ -76,16 +71,20 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
       final url =
           '${AppEnv.apiBaseUrl}/api/places/search?query=${Uri.encodeQueryComponent(query)}&limit=10';
 
-      final response = await http.get(Uri.parse(url))
-          .timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        final results = (json['results'] as List?)
-                ?.map((item) => AddressSuggestion.fromJson(item))
-                .where((s) => !(s.latitude == 0.0 && s.longitude == 0.0))
-                .toList() ??
-            [];
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final results = (json['results'] as List<dynamic>? ?? [])
+            .map((item) => AddressSuggestion(
+                  address: item['address'] as String? ?? '',
+                  latitude: (item['latitude'] as num?)?.toDouble() ?? 0.0,
+                  longitude: (item['longitude'] as num?)?.toDouble() ?? 0.0,
+                ))
+            .where((s) => s.address.isNotEmpty && !(s.latitude == 0.0 && s.longitude == 0.0))
+            .toList();
 
         if (mounted) {
           setState(() {
@@ -95,24 +94,24 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _suggestions = []);
-      }
+      debugPrint('[Places] error: $e');
+      if (mounted) setState(() => _suggestions = []);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _onTextChanged(String value) {
+    if (_suppressSearch) return;
     _debounce?.cancel();
     _debounce =
         Timer(const Duration(milliseconds: 400), () => _searchAddresses(value));
   }
 
   void _selectSuggestion(AddressSuggestion suggestion) {
+    _suppressSearch = true;
     _controller.text = suggestion.address;
+    _suppressSearch = false;
     widget.onAddressSelected(
       suggestion.address,
       suggestion.latitude,

@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_colors.dart';
 import '../../home/models/home_models.dart';
@@ -31,10 +33,45 @@ class SelectDestinationScreen extends ConsumerStatefulWidget {
 class _SelectDestinationScreenState
     extends ConsumerState<SelectDestinationScreen> {
   int _selectedIndex = 0;
+  bool _isGeocoding = false;
 
-  void _confirmSelection(List<MarketData> markets) {
+  Future<({double lat, double lng})?> _geocodeAddress(String query) async {
+    try {
+      final url =
+          'https://photon.komoot.io/api/?q=${Uri.encodeQueryComponent(query)}&limit=1&lang=en&bbox=2.6769,4.2725,14.6801,13.8856';
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final features = json['features'] as List<dynamic>? ?? [];
+        if (features.isNotEmpty) {
+          final coords = features[0]['geometry']?['coordinates'] as List<dynamic>?;
+          final lng = (coords?[0] as num?)?.toDouble();
+          final lat = (coords?[1] as num?)?.toDouble();
+          if (lat != null && lng != null) return (lat: lat, lng: lng);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _confirmSelection(List<MarketData> markets) async {
     if (markets.isEmpty) return;
     final market = markets[_selectedIndex];
+
+    double? marketLat = market.latitude;
+    double? marketLng = market.longitude;
+
+    if (marketLat == null || marketLng == null) {
+      setState(() => _isGeocoding = true);
+      final coords = await _geocodeAddress('${market.name}, ${market.address}');
+      marketLat = coords?.lat;
+      marketLng = coords?.lng;
+      if (mounted) setState(() => _isGeocoding = false);
+    }
+
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ReviewRequestScreen(
@@ -46,8 +83,8 @@ class _SelectDestinationScreenState
           storeName: market.name,
           storeLocation: market.address,
           storeImagePath: market.photoUrl,
-          marketLatitude: market.latitude,
-          marketLongitude: market.longitude,
+          marketLatitude: marketLat,
+          marketLongitude: marketLng,
         ),
       ),
     );
@@ -195,7 +232,7 @@ class _SelectDestinationScreenState
         ],
       ),
       child: GestureDetector(
-        onTap: isSubmitting ? null : () => _confirmSelection(markets),
+        onTap: (isSubmitting || _isGeocoding) ? null : () => _confirmSelection(markets),
         child: Container(
           height: 58,
           decoration: BoxDecoration(
@@ -203,7 +240,7 @@ class _SelectDestinationScreenState
             borderRadius: BorderRadius.circular(29),
           ),
           alignment: Alignment.center,
-          child: isSubmitting
+          child: (isSubmitting || _isGeocoding)
               ? const SizedBox(
                   width: 22,
                   height: 22,

@@ -1,13 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math';
+import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_colors.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/create_request_provider.dart';
 import 'order_success_screen.dart';
 
-class ReviewRequestScreen extends ConsumerWidget {
+class ReviewRequestScreen extends ConsumerStatefulWidget {
   const ReviewRequestScreen({
     super.key,
     required this.budget,
@@ -33,59 +35,102 @@ class ReviewRequestScreen extends ConsumerWidget {
   final double? marketLatitude;
   final double? marketLongitude;
 
+  @override
+  ConsumerState<ReviewRequestScreen> createState() =>
+      _ReviewRequestScreenState();
+}
+
+class _ReviewRequestScreenState extends ConsumerState<ReviewRequestScreen> {
   static const double _serviceCharge = 1500;
   static const double _bufferRate = 0.10;
-  static const double _deliveryFeePerKm = 100; // ₦100/km
-  static const double _deliveryFeeMinimum = 500; // Minimum ₦500
+  static const double _deliveryFeePerKm = 200;
+  static const double _deliveryFeeMinimum = 500;
 
-  // Haversine formula to calculate distance between two coordinates (in km)
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double? _resolvedMarketLat;
+  double? _resolvedMarketLng;
+  bool _geocoding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedMarketLat = widget.marketLatitude;
+    _resolvedMarketLng = widget.marketLongitude;
+    if (_resolvedMarketLat == null || _resolvedMarketLng == null) {
+      _geocodeMarket();
+    }
+  }
+
+  Future<void> _geocodeMarket() async {
+    setState(() => _geocoding = true);
+    try {
+      final query = '${widget.storeName}, ${widget.storeLocation}';
+      final url =
+          'https://photon.komoot.io/api/?q=${Uri.encodeQueryComponent(query)}&limit=1&lang=en&bbox=2.6769,4.2725,14.6801,13.8856';
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final features = json['features'] as List<dynamic>? ?? [];
+        if (features.isNotEmpty) {
+          final coords = features[0]['geometry']?['coordinates'] as List<dynamic>?;
+          final lng = (coords?[0] as num?)?.toDouble();
+          final lat = (coords?[1] as num?)?.toDouble();
+          if (lat != null && lng != null && mounted) {
+            setState(() {
+              _resolvedMarketLat = lat;
+              _resolvedMarketLng = lng;
+            });
+          }
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _geocoding = false);
+  }
+
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const earthRadiusKm = 6371.0;
-
     final dLat = _degreesToRadians(lat2 - lat1);
     final dLon = _degreesToRadians(lon2 - lon1);
-
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_degreesToRadians(lat1)) *
             cos(_degreesToRadians(lat2)) *
             sin(dLon / 2) *
             sin(dLon / 2);
-
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadiusKm * c;
   }
 
-  double _degreesToRadians(double degrees) {
-    return degrees * (pi / 180.0);
-  }
+  double _degreesToRadians(double degrees) => degrees * (pi / 180.0);
 
   double _getDeliveryFee() {
-    debugPrint('[DeliveryFee] marketLat=$marketLatitude, marketLng=$marketLongitude, deliveryLat=$deliveryLatitude, deliveryLng=$deliveryLongitude');
-    // If market or delivery coordinates are not available, use minimum fee
-    if (marketLatitude == null ||
-        marketLongitude == null ||
-        deliveryLatitude == 0 ||
-        deliveryLongitude == 0) {
+    if (_resolvedMarketLat == null ||
+        _resolvedMarketLng == null ||
+        widget.deliveryLatitude == 0 ||
+        widget.deliveryLongitude == 0) {
       return _deliveryFeeMinimum;
     }
-
     final distanceKm = _calculateDistance(
-      marketLatitude!,
-      marketLongitude!,
-      deliveryLatitude,
-      deliveryLongitude,
+      _resolvedMarketLat!,
+      _resolvedMarketLng!,
+      widget.deliveryLatitude,
+      widget.deliveryLongitude,
     );
-
-    final calculatedFee = distanceKm * _deliveryFeePerKm;
-    return max(calculatedFee, _deliveryFeeMinimum);
+    return max(distanceKm * _deliveryFeePerKm, _deliveryFeeMinimum);
   }
 
   double _fixedTotal(double deliveryFee) =>
-      budget + deliveryFee + _serviceCharge;
+      widget.budget + deliveryFee + _serviceCharge;
 
-  double _flexibleBuffer() => budget * _bufferRate;
+  double _flexibleBuffer() => widget.budget * _bufferRate;
   double _flexibleTotal(double deliveryFee) =>
-      budget + deliveryFee + _serviceCharge + _flexibleBuffer();
+      widget.budget + deliveryFee + _serviceCharge + _flexibleBuffer();
 
   String _formatAmount(double amount) {
     final formatted = amount
@@ -97,7 +142,7 @@ class ReviewRequestScreen extends ConsumerWidget {
     return '₦$formatted';
   }
 
-  Future<void> _submit(BuildContext context, WidgetRef ref) async {
+  Future<void> _submit(BuildContext context) async {
     final state = ref.read(createRequestProvider);
     final itemsSnapshot = state.items.toList();
     final marketType = state.marketType;
@@ -114,16 +159,18 @@ class ReviewRequestScreen extends ConsumerWidget {
 
     try {
       final isFlexible = ref.read(createRequestProvider).isFlexible;
-      final totalBudget = isFlexible ? _flexibleTotal(deliveryFee) : _fixedTotal(deliveryFee);
+      final totalBudget =
+          isFlexible ? _flexibleTotal(deliveryFee) : _fixedTotal(deliveryFee);
 
       await ref
           .read(createRequestProvider.notifier)
           .submitRequest(
-            preferredStore: storeName,
+            preferredStore: widget.storeName,
             budget: totalBudget,
-            deliveryAddress:
-                deliveryAddress.isNotEmpty ? deliveryAddress : storeLocation,
-            deliveryNotes: deliveryNotes,
+            deliveryAddress: widget.deliveryAddress.isNotEmpty
+                ? widget.deliveryAddress
+                : widget.storeLocation,
+            deliveryNotes: widget.deliveryNotes,
           );
 
       if (!context.mounted) return;
@@ -131,17 +178,15 @@ class ReviewRequestScreen extends ConsumerWidget {
       ref.invalidate(recentRequestsProvider);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder:
-              (_) => OrderSuccessScreen(
-                orderType:
-                    marketType == MarketType.supermarket
-                        ? 'Supermarket Order'
-                        : 'Open Market Order',
-                totalAmount: totalBudget,
-                storeName: storeName,
-                storeLocation: storeLocation,
-                items: itemsSnapshot,
-              ),
+          builder: (_) => OrderSuccessScreen(
+            orderType: marketType == MarketType.supermarket
+                ? 'Supermarket Order'
+                : 'Open Market Order',
+            totalAmount: totalBudget,
+            storeName: widget.storeName,
+            storeLocation: widget.storeLocation,
+            items: itemsSnapshot,
+          ),
         ),
       );
     } catch (e) {
@@ -156,7 +201,7 @@ class ReviewRequestScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(createRequestProvider);
     final items = state.items;
     final isSubmitting = state.isSubmitting;
@@ -184,11 +229,11 @@ class ReviewRequestScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Review & Post',
                           style: TextStyle(
                             fontSize: 18,
@@ -196,13 +241,22 @@ class ReviewRequestScreen extends ConsumerWidget {
                             color: Color(0xFF202123),
                           ),
                         ),
-                        Text(
-                          'Review your order',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF9A9C97),
+                        if (_geocoding)
+                          const Text(
+                            'Calculating delivery fee...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        else
+                          const Text(
+                            'Review your order',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF9A9C97),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -223,9 +277,9 @@ class ReviewRequestScreen extends ConsumerWidget {
                     const _SectionLabel('DESTINATION SUMMARY'),
                     const SizedBox(height: 12),
                     _DestinationCard(
-                      storeName: storeName,
-                      storeLocation: storeLocation,
-                      imagePath: storeImagePath,
+                      storeName: widget.storeName,
+                      storeLocation: widget.storeLocation,
+                      imagePath: widget.storeImagePath,
                     ),
                     const SizedBox(height: 28),
 
@@ -265,7 +319,7 @@ class ReviewRequestScreen extends ConsumerWidget {
                     // ── BILLING SUMMARY ──
                     _BillingSummary(
                       isFlexible: isFlexible,
-                      itemsTotal: budget,
+                      itemsTotal: widget.budget,
                       deliveryFee: deliveryFee,
                       serviceCharge: _serviceCharge,
                       buffer: _flexibleBuffer(),
@@ -275,7 +329,7 @@ class ReviewRequestScreen extends ConsumerWidget {
                     ),
 
                     // ── DELIVERY NOTES ──
-                    if (deliveryNotes.isNotEmpty) ...[
+                    if (widget.deliveryNotes.isNotEmpty) ...[
                       const SizedBox(height: 28),
                       const _SectionLabel('DELIVERY NOTES'),
                       const SizedBox(height: 12),
@@ -301,7 +355,7 @@ class ReviewRequestScreen extends ConsumerWidget {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Text(
-                                    '"$deliveryNotes"',
+                                    '"${widget.deliveryNotes}"',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontStyle: FontStyle.italic,
@@ -360,7 +414,7 @@ class ReviewRequestScreen extends ConsumerWidget {
                 ],
               ),
               child: GestureDetector(
-                onTap: isSubmitting ? null : () => _submit(context, ref),
+                onTap: (isSubmitting || _geocoding) ? null : () => _submit(context),
                 child: Container(
                   height: 58,
                   decoration: BoxDecoration(
@@ -686,34 +740,36 @@ class _BillingSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.04),
-            end: Offset.zero,
-          ).animate(anim),
-          child: child,
-        ),
-      ),
-      child: isFlexible
-          ? _FlexibleBilling(
-              key: const ValueKey('flexible'),
-              itemsTotal: itemsTotal,
-              deliveryFee: deliveryFee,
-              serviceCharge: serviceCharge,
-              buffer: buffer,
-              total: flexibleTotal,
-              formatAmount: formatAmount,
-            )
-          : _FixedBilling(
-              key: const ValueKey('fixed'),
-              itemsTotal: itemsTotal,
-              deliveryFee: deliveryFee,
-              serviceCharge: serviceCharge,
-              total: fixedTotal,
-              formatAmount: formatAmount,
+      transitionBuilder:
+          (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
             ),
+          ),
+      child:
+          isFlexible
+              ? _FlexibleBilling(
+                key: const ValueKey('flexible'),
+                itemsTotal: itemsTotal,
+                deliveryFee: deliveryFee,
+                serviceCharge: serviceCharge,
+                buffer: buffer,
+                total: flexibleTotal,
+                formatAmount: formatAmount,
+              )
+              : _FixedBilling(
+                key: const ValueKey('fixed'),
+                itemsTotal: itemsTotal,
+                deliveryFee: deliveryFee,
+                serviceCharge: serviceCharge,
+                total: fixedTotal,
+                formatAmount: formatAmount,
+              ),
     );
   }
 }
@@ -804,7 +860,10 @@ class _FixedBilling extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE6F4EA),
                   borderRadius: BorderRadius.circular(20),
@@ -868,7 +927,11 @@ class _FlexibleBilling extends StatelessWidget {
           const SizedBox(height: 4),
           const Text(
             'Item prices may change during shopping. Any unused balance is refunded to your wallet.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF7A7C77), height: 1.5),
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF7A7C77),
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 16),
           _FeeRow(
@@ -921,10 +984,16 @@ class _FlexibleBilling extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFDF0E0),
-                  border: Border.all(color: const Color(0xFFD4860A), width: 1.2),
+                  border: Border.all(
+                    color: const Color(0xFFD4860A),
+                    width: 1.2,
+                  ),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
