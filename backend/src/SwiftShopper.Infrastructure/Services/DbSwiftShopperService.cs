@@ -1321,7 +1321,7 @@ public class DbSwiftShopperService : ISwiftShopperService
         // - "Online" if shopper has any currently active order (Accepted/Shopping/Purchased/OutForDelivery), OR
         // - has recent activity in the last few hours.
         // This is intentionally lenient so active/logged-in shoppers are not misclassified as offline.
-        var recentActivityCutoff = DateTimeOffset.UtcNow.AddHours(-6);
+        var recentActivityCutoff = DateTimeOffset.UtcNow.AddMinutes(-5);
         var activeJobStatuses = new[]
         {
             OrderStatus.Accepted,
