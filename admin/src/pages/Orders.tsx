@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getOrders, getOrderDetail, updateOrderStatus, type AdminOrderDto, type AdminOrderItemDto, type AdminOrderDetailDto, type PagedResult } from '../lib/api';
+import { Fragment, useState, useEffect } from 'react';
+import { assignOrderShopper, getOrders, getOrderDetail, getShoppers, updateOrderStatus, type AdminOrderDto, type AdminOrderItemDto, type AdminOrderDetailDto, type AdminShopperDto, type PagedResult } from '../lib/api';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -213,6 +213,11 @@ export default function Orders() {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [confirmingOrder, setConfirmingOrder] = useState<{ id: string; storeName: string } | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [assigningOrder, setAssigningOrder] = useState<{ id: string; storeName: string; currentShopperName: string | null } | null>(null);
+  const [availableShoppers, setAvailableShoppers] = useState<AdminShopperDto[]>([]);
+  const [selectedShopperId, setSelectedShopperId] = useState('');
+  const [loadingShoppers, setLoadingShoppers] = useState(false);
+  const [assigningShopper, setAssigningShopper] = useState(false);
 
   const loadOrders = () => {
     setLoading(true);
@@ -237,6 +242,45 @@ export default function Orders() {
       setError(message);
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const openAssignModal = async (order: AdminOrderDto) => {
+    setAssigningOrder({
+      id: order.orderId,
+      storeName: order.storeName,
+      currentShopperName: order.shopperName,
+    });
+    setSelectedShopperId('');
+    setAvailableShoppers([]);
+    setLoadingShoppers(true);
+    try {
+      const shoppers = await getShoppers('all', 1, 200);
+      const active = shoppers.items.filter((s) => s.isActive);
+      setAvailableShoppers(active);
+      if (active.length > 0) {
+        setSelectedShopperId(active[0].shopperId);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to load shoppers.';
+      setError(message);
+    } finally {
+      setLoadingShoppers(false);
+    }
+  };
+
+  const assignShopperToOrder = async () => {
+    if (!assigningOrder || !selectedShopperId) return;
+    try {
+      setAssigningShopper(true);
+      await assignOrderShopper(assigningOrder.id, selectedShopperId);
+      setAssigningOrder(null);
+      loadOrders();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to assign shopper.';
+      setError(message);
+    } finally {
+      setAssigningShopper(false);
     }
   };
 
@@ -314,6 +358,83 @@ export default function Orders() {
             >
               <span className="material-symbols-outlined text-sm text-neutral-700">close</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {assigningOrder && (
+        <div
+          className="fixed inset-0 z-[210] bg-black/60 flex items-center justify-center px-4"
+          onClick={() => {
+            if (!assigningShopper) {
+              setAssigningOrder(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/20 p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-extrabold text-on-surface mb-2">
+              {assigningOrder.currentShopperName ? 'Reassign shopper' : 'Assign shopper'}
+            </h3>
+            <p className="text-sm text-secondary mb-5">
+              Order <span className="font-semibold text-on-surface">#{assigningOrder.id.slice(-6).toUpperCase()}</span>
+              {' '}({assigningOrder.storeName || 'Store'})
+            </p>
+
+            {loadingShoppers ? (
+              <div className="py-6 flex items-center gap-2 text-sm text-secondary">
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                Loading shoppers...
+              </div>
+            ) : availableShoppers.length === 0 ? (
+              <div className="py-6 text-sm text-secondary">No active shoppers available.</div>
+            ) : (
+              <div className="mb-6">
+                <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-2">
+                  Select Shopper
+                </label>
+                <select
+                  value={selectedShopperId}
+                  onChange={e => setSelectedShopperId(e.target.value)}
+                  className="w-full bg-surface-container-high border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {availableShoppers.map((shopper) => (
+                    <option key={shopper.shopperId} value={shopper.shopperId}>
+                      {shopper.fullName} {shopper.isOnline ? '• Online' : '• Offline'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setAssigningOrder(null)}
+                disabled={assigningShopper}
+                className="px-4 py-2 rounded-xl border border-outline-variant/30 text-on-surface text-sm font-semibold hover:bg-surface-container-low transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={assignShopperToOrder}
+                disabled={assigningShopper || loadingShoppers || availableShoppers.length === 0 || !selectedShopperId}
+                className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 inline-flex items-center gap-2"
+              >
+                {assigningShopper ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    Saving
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">person_add</span>
+                    Assign Shopper
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -422,9 +543,8 @@ export default function Orders() {
                   <td colSpan={8} className="px-6 py-10 text-center text-secondary text-sm">No orders found.</td>
                 </tr>
               ) : orders.map((order: AdminOrderDto, idx: number) => (
-                <>
+                <Fragment key={order.orderId}>
                 <tr
-                  key={order.orderId}
                   className={`hover:bg-primary/5 transition-colors group cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-surface-container-low'}`}
                   onClick={() => setExpandedOrderId(prev => prev === order.orderId ? null : order.orderId)}
                 >
@@ -471,36 +591,49 @@ export default function Orders() {
                   </td>
                   <td className="px-6 py-4 text-sm font-bold text-on-surface">{fmtNgn(order.total)}</td>
                   <td className="px-6 py-4 text-right">
-                    {order.status === 5 ? (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-neutral-200 text-neutral-600 uppercase tracking-wide">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        Completed
-                      </span>
-                    ) : (
+                    <div className="inline-flex items-center gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setConfirmingOrder({
-                            id: order.orderId,
-                            storeName: order.storeName,
-                          });
+                          void openAssignModal(order);
                         }}
-                        disabled={updatingOrderId === order.orderId}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                       >
-                        {updatingOrderId === order.orderId ? (
-                          <>
-                            <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                            Updating
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-sm">task_alt</span>
-                            Mark Complete
-                          </>
-                        )}
+                        <span className="material-symbols-outlined text-sm">person_add</span>
+                        {order.shopperName ? 'Reassign' : 'Assign Shopper'}
                       </button>
-                    )}
+
+                      {order.status === 5 ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-neutral-200 text-neutral-600 uppercase tracking-wide">
+                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                          Completed
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmingOrder({
+                              id: order.orderId,
+                              storeName: order.storeName,
+                            });
+                          }}
+                          disabled={updatingOrderId === order.orderId}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {updatingOrderId === order.orderId ? (
+                            <>
+                              <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                              Updating
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-sm">task_alt</span>
+                              Mark Complete
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
                 {expandedOrderId === order.orderId && (
@@ -510,7 +643,7 @@ export default function Orders() {
                     onViewImage={(url, name) => setViewingImage({ url, name })}
                   />
                 )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
