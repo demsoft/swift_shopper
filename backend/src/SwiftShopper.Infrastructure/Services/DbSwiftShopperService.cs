@@ -1318,10 +1318,10 @@ public class DbSwiftShopperService : ISwiftShopperService
             .ToDictionaryAsync(x => x.ShopperId, ct);
 
         // Presence heuristic:
-        // - "Online" if shopper has an active job (Accepted/Shopping/Purchased/OutForDelivery)
-        //   updated in the last 20 minutes.
-        // - LastActiveAt is the latest order update timestamp for that shopper.
-        var activeCutoff = DateTimeOffset.UtcNow.AddMinutes(-20);
+        // - "Online" if shopper has any currently active order (Accepted/Shopping/Purchased/OutForDelivery), OR
+        // - has recent activity in the last few hours.
+        // This is intentionally lenient so active/logged-in shoppers are not misclassified as offline.
+        var recentActivityCutoff = DateTimeOffset.UtcNow.AddHours(-6);
         var activeJobStatuses = new[]
         {
             OrderStatus.Accepted,
@@ -1329,6 +1329,15 @@ public class DbSwiftShopperService : ISwiftShopperService
             OrderStatus.Purchased,
             OrderStatus.OutForDelivery
         };
+
+        var activeOrderCounts = await _dbContext.Orders.AsNoTracking()
+            .Where(x =>
+                x.ShopperId != null &&
+                shopperIds.Contains(x.ShopperId) &&
+                activeJobStatuses.Contains(x.Status))
+            .GroupBy(x => x.ShopperId!)
+            .Select(g => new { ShopperId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ShopperId, x => x.Count, ct);
 
         var latestActiveJobUpdate = await _dbContext.Orders.AsNoTracking()
             .Where(x =>
@@ -1349,11 +1358,14 @@ public class DbSwiftShopperService : ISwiftShopperService
         {
             completedCounts.TryGetValue(s.Id, out var completed);
             monthCounts.TryGetValue(s.Id, out var month);
+            activeOrderCounts.TryGetValue(s.Id, out var activeOrdersCount);
             latestActiveJobUpdate.TryGetValue(s.Id, out var lastActiveJobAt);
             latestAnyOrderUpdate.TryGetValue(s.Id, out var lastSeenAt);
-            var isOnline = s.IsActive &&
-                lastActiveJobAt != default &&
-                lastActiveJobAt >= activeCutoff;
+            var hasActiveOrder = activeOrdersCount > 0;
+            var hasRecentActivity =
+                (lastActiveJobAt != default && lastActiveJobAt >= recentActivityCutoff) ||
+                (lastSeenAt != default && lastSeenAt >= recentActivityCutoff);
+            var isOnline = s.IsActive && (hasActiveOrder || hasRecentActivity);
 
             return new AdminShopperDto
             {
