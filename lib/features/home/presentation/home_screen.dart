@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/home_models.dart';
 import '../providers/home_provider.dart';
-import '../../create_request/presentation/create_request_screen.dart';
+import '../../create_request/presentation/order_preferences_screen.dart';
 import 'order_details_screen.dart';
 import 'active_job_screen.dart';
 import 'request_detail_screen.dart';
@@ -58,7 +58,7 @@ class HomeScreen extends ConsumerWidget {
                   onCreateRequest: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const CreateRequestScreen(),
+                        builder: (_) => const OrderPreferencesScreen(),
                       ),
                     );
                   },

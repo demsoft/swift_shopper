@@ -11,10 +11,12 @@ class SelectDestinationScreen extends ConsumerStatefulWidget {
   const SelectDestinationScreen({
     super.key,
     required this.budget,
+    required this.deliveryAddress,
     required this.deliveryNotes,
   });
 
   final double budget;
+  final String deliveryAddress;
   final String deliveryNotes;
 
   @override
@@ -33,6 +35,7 @@ class _SelectDestinationScreenState
       MaterialPageRoute<void>(
         builder: (_) => ReviewRequestScreen(
           budget: widget.budget,
+          deliveryAddress: widget.deliveryAddress,
           deliveryNotes: widget.deliveryNotes,
           storeName: market.name,
           storeLocation: market.address,

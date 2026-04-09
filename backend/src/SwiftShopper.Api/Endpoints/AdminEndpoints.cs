@@ -88,6 +88,28 @@ public static class AdminEndpoints
         })
         .WithSummary("Update the status of any order (admin override).");
 
+        group.MapPatch("/orders/{orderId}/assign-shopper", async (
+            string orderId,
+            AssignOrderShopperDto body,
+            ISwiftShopperService svc,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var order = await svc.AssignAdminOrderShopperAsync(orderId, body, ct);
+                return Results.Ok(new { order.Id, order.ShopperId, order.ShopperName, order.Status, order.UpdatedAt });
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .WithSummary("Assign or reassign a shopper to an order.");
+
         // ── Shoppers ──────────────────────────────────────────────────────────
 
         group.MapGet("/shoppers", async (

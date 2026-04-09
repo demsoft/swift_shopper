@@ -1216,6 +1216,77 @@ public class DbSwiftShopperService : ISwiftShopperService
         return order;
     }
 
+    public async Task<Order> AssignAdminOrderShopperAsync(
+        string orderId, AssignOrderShopperDto dto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.ShopperId))
+            throw new InvalidOperationException("ShopperId is required.");
+
+        var order = await _dbContext.Orders
+            .FirstOrDefaultAsync(x => x.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        if (order.Status == OrderStatus.Delivered)
+            throw new InvalidOperationException("Delivered orders cannot be reassigned.");
+
+        var shopper = await _dbContext.UserAccounts.AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.Id == dto.ShopperId &&
+                x.Role == UserRole.Shopper &&
+                x.IsActive, ct)
+            ?? throw new KeyNotFoundException("Shopper not found or inactive.");
+
+        var request = await _dbContext.ShoppingRequests
+            .FirstOrDefaultAsync(x => x.Id == order.RequestId, ct)
+            ?? throw new KeyNotFoundException($"Request {order.RequestId} not found.");
+
+        order.ShopperId = shopper.Id;
+        order.ShopperName = shopper.FullName;
+        order.Status = order.Status == OrderStatus.Pending ? OrderStatus.Accepted : order.Status;
+        if (order.EstimatedDeliveryMinutes <= 0)
+            order.EstimatedDeliveryMinutes = 45;
+
+        if (string.IsNullOrWhiteSpace(order.StoreName))
+            order.StoreName = request.PreferredStore;
+
+        var customer = await _dbContext.UserAccounts.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.CustomerId, ct);
+
+        if (!string.IsNullOrWhiteSpace(order.StoreName))
+        {
+            var market = await _dbContext.Markets.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Name.ToLower() == order.StoreName.ToLower(), ct);
+            order.DeliveryFee = CalculateDeliveryFee(
+                market?.Latitude, market?.Longitude,
+                customer?.Latitude, customer?.Longitude);
+        }
+
+        var existingItemsCount = await _dbContext.OrderItems.AsNoTracking()
+            .CountAsync(x => x.OrderId == order.Id, ct);
+
+        if (existingItemsCount == 0)
+        {
+            var orderItems = request.Items.Select(item => new OrderItem
+            {
+                OrderId = order.Id,
+                Name = item.Name,
+                Unit = item.Unit,
+                Description = item.Description,
+                Quantity = item.Quantity,
+                EstimatedPrice = item.Price,
+                Status = OrderItemStatus.Pending,
+                UpdatedAt = DateTimeOffset.UtcNow
+            }).ToList();
+
+            if (orderItems.Count > 0)
+                await _dbContext.OrderItems.AddRangeAsync(orderItems, ct);
+        }
+
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        await _dbContext.SaveChangesAsync(ct);
+        return order;
+    }
+
     public async Task<PagedResult<AdminShopperDto>> GetAdminShoppersAsync(
         string tab, int page, int pageSize, CancellationToken ct)
     {

@@ -10,6 +10,7 @@ class ReviewRequestScreen extends ConsumerWidget {
   const ReviewRequestScreen({
     super.key,
     required this.budget,
+    required this.deliveryAddress,
     required this.deliveryNotes,
     required this.storeName,
     required this.storeLocation,
@@ -17,20 +18,21 @@ class ReviewRequestScreen extends ConsumerWidget {
   });
 
   final double budget;
+  final String deliveryAddress;
   final String deliveryNotes;
   final String storeName;
   final String storeLocation;
   final String? storeImagePath;
 
-  static const double _serviceFee = 1500;
-  static const double _shopperFeeRate = 0.12;
-  static const double _shopperFeeMin = 1000;
-  static const double _shopperFeeMax = 7000;
+  static const double _deliveryFee = 800;
+  static const double _serviceCharge = 1500;
+  // Flexible-only
+  static const double _bufferRate = 0.10;
 
-  double _shopperFee(double itemsTotal) {
-    final fee = itemsTotal * _shopperFeeRate;
-    return fee.clamp(_shopperFeeMin, _shopperFeeMax);
-  }
+  double _fixedTotal() => budget + _deliveryFee + _serviceCharge;
+
+  double _flexibleBuffer() => budget * _bufferRate;
+  double _flexibleTotal() => budget + _deliveryFee + _serviceCharge + _flexibleBuffer();
 
   String _formatAmount(double amount) {
     final formatted = amount
@@ -57,15 +59,16 @@ class ReviewRequestScreen extends ConsumerWidget {
     }
 
     try {
-      final shopperFee = _shopperFee(budget);
-      final totalBudget = budget + shopperFee + _serviceFee;
+      final isFlexible = ref.read(createRequestProvider).isFlexible;
+      final totalBudget = isFlexible ? _flexibleTotal() : _fixedTotal();
 
       await ref
           .read(createRequestProvider.notifier)
           .submitRequest(
             preferredStore: storeName,
             budget: totalBudget,
-            deliveryAddress: storeLocation,
+            deliveryAddress:
+                deliveryAddress.isNotEmpty ? deliveryAddress : storeLocation,
             deliveryNotes: deliveryNotes,
           );
 
@@ -100,10 +103,10 @@ class ReviewRequestScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(createRequestProvider).items;
-    final isSubmitting = ref.watch(createRequestProvider).isSubmitting;
-    final shopperFee = _shopperFee(budget);
-    final total = budget + shopperFee + _serviceFee;
+    final state = ref.watch(createRequestProvider);
+    final items = state.items;
+    final isSubmitting = state.isSubmitting;
+    final isFlexible = state.isFlexible;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2EF),
@@ -215,102 +218,16 @@ class ReviewRequestScreen extends ConsumerWidget {
                     }),
                     const SizedBox(height: 28),
 
-                    // ── BUDGET & FEES ──
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _SectionLabel('BUDGET & FEES'),
-                          const SizedBox(height: 16),
-                          _FeeRow(
-                            label: 'Estimated Items Total',
-                            amount: _formatAmount(budget),
-                            amountColor: const Color(0xFF202123),
-                          ),
-                          const SizedBox(height: 12),
-                          _FeeRow(
-                            label: 'Personal Shopper Fee (12%)',
-                            amount: _formatAmount(shopperFee),
-                            amountColor: const Color(0xFFD4860A),
-                          ),
-                          const SizedBox(height: 12),
-                          _FeeRow(
-                            label: 'Delivery Fee',
-                            amount: 'Calculated at pickup',
-                            amountColor: const Color(0xFF9A9C97),
-                            isNote: true,
-                          ),
-                          const SizedBox(height: 12),
-                          _FeeRow(
-                            label: 'Service Fee',
-                            amount: _formatAmount(_serviceFee),
-                            amountColor: const Color(0xFFD4860A),
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFEEF0ED), height: 1),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'TOTAL ESTIMATED BUDGET',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                _formatAmount(total),
-                                style: const TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF202123),
-                                  height: 1,
-                                ),
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFDF0E0),
-                                  border: Border.all(
-                                    color: const Color(0xFFD4860A),
-                                    width: 1.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'GUARANTEED RATE',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFFD4860A),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    // ── BILLING SUMMARY ──
+                    _BillingSummary(
+                      isFlexible: isFlexible,
+                      itemsTotal: budget,
+                      deliveryFee: _deliveryFee,
+                      serviceCharge: _serviceCharge,
+                      buffer: _flexibleBuffer(),
+                      fixedTotal: _fixedTotal(),
+                      flexibleTotal: _flexibleTotal(),
+                      formatAmount: _formatAmount,
                     ),
 
                     // ── DELIVERY NOTES ──
@@ -669,13 +586,11 @@ class _FeeRow extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.amountColor,
-    this.isNote = false,
   });
 
   final String label;
   final String amount;
   final Color amountColor;
-  final bool isNote;
 
   @override
   Widget build(BuildContext context) {
@@ -689,13 +604,299 @@ class _FeeRow extends StatelessWidget {
         Text(
           amount,
           style: TextStyle(
-            fontSize: isNote ? 12 : 15,
-            fontWeight: isNote ? FontWeight.w400 : FontWeight.w700,
-            fontStyle: isNote ? FontStyle.italic : FontStyle.normal,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
             color: amountColor,
           ),
         ),
       ],
+    );
+  }
+}
+
+// ===========================================================================
+// BILLING SUMMARY
+// ===========================================================================
+class _BillingSummary extends StatelessWidget {
+  const _BillingSummary({
+    required this.isFlexible,
+    required this.itemsTotal,
+    required this.deliveryFee,
+    required this.serviceCharge,
+    required this.buffer,
+    required this.fixedTotal,
+    required this.flexibleTotal,
+    required this.formatAmount,
+  });
+
+  final bool isFlexible;
+  final double itemsTotal;
+  final double deliveryFee;
+  final double serviceCharge;
+  final double buffer;
+  final double fixedTotal;
+  final double flexibleTotal;
+  final String Function(double) formatAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(anim),
+          child: child,
+        ),
+      ),
+      child: isFlexible
+          ? _FlexibleBilling(
+              key: const ValueKey('flexible'),
+              itemsTotal: itemsTotal,
+              deliveryFee: deliveryFee,
+              serviceCharge: serviceCharge,
+              buffer: buffer,
+              total: flexibleTotal,
+              formatAmount: formatAmount,
+            )
+          : _FixedBilling(
+              key: const ValueKey('fixed'),
+              itemsTotal: itemsTotal,
+              deliveryFee: deliveryFee,
+              serviceCharge: serviceCharge,
+              total: fixedTotal,
+              formatAmount: formatAmount,
+            ),
+    );
+  }
+}
+
+// ── Fixed billing ─────────────────────────────────────────────────────────────
+class _FixedBilling extends StatelessWidget {
+  const _FixedBilling({
+    super.key,
+    required this.itemsTotal,
+    required this.deliveryFee,
+    required this.serviceCharge,
+    required this.total,
+    required this.formatAmount,
+  });
+
+  final double itemsTotal;
+  final double deliveryFee;
+  final double serviceCharge;
+  final double total;
+  final String Function(double) formatAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('BILLING SUMMARY · FIXED MODE'),
+          const SizedBox(height: 4),
+          const Text(
+            'All prices are final and will not change.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF7A7C77)),
+          ),
+          const SizedBox(height: 16),
+          _FeeRow(
+            label: 'Items Total',
+            amount: formatAmount(itemsTotal),
+            amountColor: const Color(0xFF202123),
+          ),
+          const SizedBox(height: 12),
+          _FeeRow(
+            label: 'Delivery Fee',
+            amount: formatAmount(deliveryFee),
+            amountColor: const Color(0xFF202123),
+          ),
+          const SizedBox(height: 12),
+          _FeeRow(
+            label: 'Service Charge',
+            amount: formatAmount(serviceCharge),
+            amountColor: const Color(0xFFD4860A),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFEEF0ED), height: 1),
+          const SizedBox(height: 16),
+          const Text(
+            'FINAL TOTAL',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                formatAmount(total),
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF202123),
+                  height: 1,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F4EA),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'GUARANTEED PRICE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Flexible billing ──────────────────────────────────────────────────────────
+class _FlexibleBilling extends StatelessWidget {
+  const _FlexibleBilling({
+    super.key,
+    required this.itemsTotal,
+    required this.deliveryFee,
+    required this.serviceCharge,
+    required this.buffer,
+    required this.total,
+    required this.formatAmount,
+  });
+
+  final double itemsTotal;
+  final double deliveryFee;
+  final double serviceCharge;
+  final double buffer;
+  final double total;
+  final String Function(double) formatAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('BILLING SUMMARY · FLEXIBLE MODE'),
+          const SizedBox(height: 4),
+          const Text(
+            'Item prices may change during shopping. Any unused balance is refunded to your wallet.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF7A7C77), height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          _FeeRow(
+            label: 'Estimated Items Total',
+            amount: formatAmount(itemsTotal),
+            amountColor: const Color(0xFF202123),
+          ),
+          const SizedBox(height: 12),
+          _FeeRow(
+            label: 'Delivery Fee',
+            amount: formatAmount(deliveryFee),
+            amountColor: const Color(0xFF202123),
+          ),
+          const SizedBox(height: 12),
+          _FeeRow(
+            label: 'Service Charge',
+            amount: formatAmount(serviceCharge),
+            amountColor: const Color(0xFFD4860A),
+          ),
+          const SizedBox(height: 12),
+          _FeeRow(
+            label: 'Buffer (10%)',
+            amount: formatAmount(buffer),
+            amountColor: const Color(0xFFD4860A),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFEEF0ED), height: 1),
+          const SizedBox(height: 16),
+          const Text(
+            'TOTAL AMOUNT TO FUND',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                formatAmount(total),
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF202123),
+                  height: 1,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDF0E0),
+                  border: Border.all(color: const Color(0xFFD4860A), width: 1.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'REFUNDABLE BALANCE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFD4860A),
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -907,6 +907,60 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(order);
     }
 
+    public Task<Order> AssignAdminOrderShopperAsync(
+        string orderId, AssignOrderShopperDto dto, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(dto.ShopperId))
+            throw new InvalidOperationException("ShopperId is required.");
+
+        var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase))
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        if (order.Status == OrderStatus.Delivered)
+            throw new InvalidOperationException("Delivered orders cannot be reassigned.");
+
+        var shopper = _shoppers.FirstOrDefault(s =>
+            s.Id.Equals(dto.ShopperId, StringComparison.OrdinalIgnoreCase) &&
+            s.IsActive);
+        if (shopper is null)
+            throw new KeyNotFoundException("Shopper not found or inactive.");
+
+        var request = _requests.FirstOrDefault(r => r.Id.Equals(order.RequestId, StringComparison.OrdinalIgnoreCase))
+            ?? throw new KeyNotFoundException($"Request {order.RequestId} not found.");
+
+        order.ShopperId = shopper.Id;
+        order.ShopperName = shopper.FullName;
+        if (order.Status == OrderStatus.Pending)
+            order.Status = OrderStatus.Accepted;
+        if (order.EstimatedDeliveryMinutes <= 0)
+            order.EstimatedDeliveryMinutes = 45;
+
+        if (string.IsNullOrWhiteSpace(order.StoreName))
+            order.StoreName = request.PreferredStore;
+
+        var existingItemsCount = _orderItems.Count(i => i.OrderId.Equals(order.Id, StringComparison.OrdinalIgnoreCase));
+        if (existingItemsCount == 0)
+        {
+            var nextId = _orderItems.Count > 0 ? _orderItems.Max(x => x.Id) + 1 : 1;
+            var newItems = request.Items.Select(ri => new OrderItem
+            {
+                Id = nextId++,
+                OrderId = order.Id,
+                Name = ri.Name,
+                Unit = ri.Unit,
+                Description = ri.Description,
+                Quantity = ri.Quantity,
+                EstimatedPrice = ri.Price > 0 ? ri.Price : ri.MaxPrice ?? 0m,
+                Status = OrderItemStatus.Pending,
+                UpdatedAt = DateTimeOffset.UtcNow
+            }).ToList();
+            _orderItems.AddRange(newItems);
+        }
+
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        return Task.FromResult(order);
+    }
+
     // ── Admin: Shoppers ───────────────────────────────────────────────────────
 
     public Task<PagedResult<AdminShopperDto>> GetAdminShoppersAsync(

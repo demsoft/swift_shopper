@@ -3,6 +3,7 @@ using SwiftShopper.Domain.Enums;
 namespace SwiftShopper.Application.Contracts.Requests;
 
 public record UpdateOrderStatusDto(OrderStatus Status);
+public record AssignOrderShopperDto(string ShopperId);
 
 public record UpdateUserStatusDto(bool IsActive);
 

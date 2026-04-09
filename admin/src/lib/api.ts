@@ -165,6 +165,13 @@ export function updateOrderStatus(orderId: string, status: number) {
   });
 }
 
+export function assignOrderShopper(orderId: string, shopperId: string) {
+  return request(`/api/admin/orders/${orderId}/assign-shopper`, {
+    method: 'PATCH',
+    body: JSON.stringify({ shopperId }),
+  });
+}
+
 // ── Admin: Shoppers ───────────────────────────────────────────────────────────
 
 export interface AdminShopperDto {

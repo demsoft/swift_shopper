@@ -18,11 +18,13 @@ class CreateRequestScreen extends ConsumerStatefulWidget {
 class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   final _budgetController = TextEditingController();
   final _notesController = TextEditingController();
+  final _addressController = TextEditingController();
 
   @override
   void dispose() {
     _budgetController.dispose();
     _notesController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -42,16 +44,19 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddItemSheet(
-        onAdd: (name, unit, description, price) {
-          ref.read(createRequestProvider.notifier).addItemWithDetails(
-                name: name,
-                unit: unit,
-                description: description,
-                price: price,
-              );
-        },
-      ),
+      builder:
+          (_) => _AddItemSheet(
+            onAdd: (name, unit, description, price) {
+              ref
+                  .read(createRequestProvider.notifier)
+                  .addItemWithDetails(
+                    name: name,
+                    unit: unit,
+                    description: description,
+                    price: price,
+                  );
+            },
+          ),
     );
   }
 
@@ -59,10 +64,12 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
     final budget = double.tryParse(_budgetController.text.trim()) ?? 0.0;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => SelectDestinationScreen(
-          budget: budget,
-          deliveryNotes: _notesController.text.trim(),
-        ),
+        builder:
+            (_) => SelectDestinationScreen(
+              budget: budget,
+              deliveryAddress: _addressController.text.trim(),
+              deliveryNotes: _notesController.text.trim(),
+            ),
       ),
     );
   }
@@ -73,18 +80,13 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
     final notifier = ref.read(createRequestProvider.notifier);
 
     // Auto-populate budget from items total
-    ref.listen(
-      createRequestProvider.select((s) => s.itemsTotal),
-      (_, total) {
-        setState(() {
-          _budgetController.text =
-              total > 0 ? total.toStringAsFixed(0) : '';
-        });
-      },
-    );
+    ref.listen(createRequestProvider.select((s) => s.itemsTotal), (_, total) {
+      setState(() {
+        _budgetController.text = total > 0 ? total.toStringAsFixed(0) : '';
+      });
+    });
 
-    final budgetAmount =
-        double.tryParse(_budgetController.text.trim()) ?? 0.0;
+    final budgetAmount = double.tryParse(_budgetController.text.trim()) ?? 0.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2EF),
@@ -119,6 +121,8 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                       onToggleFlexible: notifier.toggleFlexible,
                       onBudgetChanged: (_) => setState(() {}),
                     ),
+                    const SizedBox(height: 28),
+                    _DeliveryAddressSection(controller: _addressController),
                     const SizedBox(height: 28),
                     _DeliveryNotesSection(controller: _notesController),
                     const SizedBox(height: 24),
@@ -178,10 +182,7 @@ class _Header extends ConsumerWidget {
 // MARKET TYPE SECTION
 // ===========================================================================
 class _MarketTypeSection extends StatelessWidget {
-  const _MarketTypeSection({
-    required this.selected,
-    required this.onSelect,
-  });
+  const _MarketTypeSection({required this.selected, required this.onSelect});
 
   final MarketType selected;
   final ValueChanged<MarketType> onSelect;
@@ -213,7 +214,7 @@ class _MarketTypeSection extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: _MarketTypeCard(
-                label: 'Open Market',
+                label: 'Local Market',
                 icon: Icons.shopping_bag_outlined,
                 isSelected: selected == MarketType.openMarket,
                 onTap: () => onSelect(MarketType.openMarket),
@@ -263,21 +264,22 @@ class _MarketTypeCard extends StatelessWidget {
                   Icon(
                     icon,
                     size: 32,
-                    color: isSelected
-                        ? AppColors.primary
-                        : const Color(0xFF9A9C97),
+                    color:
+                        isSelected
+                            ? AppColors.primary
+                            : const Color(0xFF9A9C97),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     label,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? const Color(0xFF202123)
-                          : const Color(0xFF9A9C97),
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color:
+                          isSelected
+                              ? const Color(0xFF202123)
+                              : const Color(0xFF9A9C97),
                     ),
                   ),
                 ],
@@ -344,8 +346,10 @@ class _ShoppingListSection extends StatelessWidget {
             const Spacer(),
             if (items.isNotEmpty)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFD7EDDB),
                   borderRadius: BorderRadius.circular(20),
@@ -373,10 +377,7 @@ class _ShoppingListSection extends StatelessWidget {
             alignment: Alignment.center,
             child: const Text(
               'No items added yet',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFFB0B2AD),
-              ),
+              style: TextStyle(fontSize: 13, color: Color(0xFFB0B2AD)),
             ),
           )
         else
@@ -549,11 +550,7 @@ class _AddItemButton extends StatelessWidget {
                     color: AppColors.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 16),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -576,22 +573,23 @@ class _AddItemButton extends StatelessWidget {
 class _DashedBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFB0B2AD)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = const Color(0xFFB0B2AD)
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
 
     const dashWidth = 6.0;
     const dashSpace = 4.0;
     const radius = Radius.circular(14);
 
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          radius,
-        ),
-      );
+    final path =
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+            radius,
+          ),
+        );
 
     for (final metric in path.computeMetrics()) {
       double distance = 0;
@@ -612,7 +610,13 @@ class _DashedBorderPainter extends CustomPainter {
 // ===========================================================================
 class _AddItemSheet extends StatefulWidget {
   const _AddItemSheet({required this.onAdd});
-  final void Function(String name, String unit, String description, double price) onAdd;
+  final void Function(
+    String name,
+    String unit,
+    String description,
+    double price,
+  )
+  onAdd;
 
   @override
   State<_AddItemSheet> createState() => _AddItemSheetState();
@@ -931,6 +935,58 @@ class _BudgetSection extends StatelessWidget {
 }
 
 // ===========================================================================
+// DELIVERY ADDRESS SECTION
+// ===========================================================================
+class _DeliveryAddressSection extends StatelessWidget {
+  const _DeliveryAddressSection({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Delivery Address',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF202123),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              hintText: 'e.g., 12 Adeola Odeku Street, Victoria Island...',
+              hintStyle: TextStyle(color: Color(0xFFB0B2AD), fontSize: 14),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.all(16),
+              prefixIcon: Padding(
+                padding: EdgeInsets.fromLTRB(16, 14, 8, 14),
+                child: Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              prefixIconConstraints: BoxConstraints(),
+            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===========================================================================
 // DELIVERY NOTES SECTION
 // ===========================================================================
 class _DeliveryNotesSection extends StatelessWidget {
@@ -961,17 +1017,11 @@ class _DeliveryNotesSection extends StatelessWidget {
             maxLines: 5,
             decoration: const InputDecoration(
               hintText: 'e.g., Call me before buying the meat...',
-              hintStyle: TextStyle(
-                color: Color(0xFFB0B2AD),
-                fontSize: 14,
-              ),
+              hintStyle: TextStyle(color: Color(0xFFB0B2AD), fontSize: 14),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(16),
             ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF202123),
-            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
           ),
         ),
       ],
@@ -1044,25 +1094,26 @@ class _BottomBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(27),
                 ),
                 alignment: Alignment.center,
-                child: isSubmitting
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
+                child:
+                    isSubmitting
+                        ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Select Market/Store',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
                         ),
-                      )
-                    : const Text(
-                        'Post Shopping\nRequest',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1.3,
-                        ),
-                      ),
               ),
             ),
           ),
