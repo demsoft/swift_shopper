@@ -71,6 +71,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
+app.MapPlacesEndpoints();
 app.MapAdminEndpoints();
 app.MapMarketsEndpoints();
 app.MapUploadEndpoints();

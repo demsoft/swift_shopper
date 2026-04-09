@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/request_item.dart';
 import '../providers/create_request_provider.dart';
 import 'select_destination_screen.dart';
+import 'widgets/address_autocomplete_field.dart';
 
 class CreateRequestScreen extends ConsumerStatefulWidget {
   const CreateRequestScreen({super.key});
@@ -18,13 +19,22 @@ class CreateRequestScreen extends ConsumerStatefulWidget {
 class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   final _budgetController = TextEditingController();
   final _notesController = TextEditingController();
-  final _addressController = TextEditingController();
+  late double _deliveryLatitude;
+  late double _deliveryLongitude;
+  late String _deliveryAddress;
+
+  @override
+  void initState() {
+    super.initState();
+    _deliveryLatitude = 0.0;
+    _deliveryLongitude = 0.0;
+    _deliveryAddress = '';
+  }
 
   @override
   void dispose() {
     _budgetController.dispose();
     _notesController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
@@ -67,7 +77,9 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
         builder:
             (_) => SelectDestinationScreen(
               budget: budget,
-              deliveryAddress: _addressController.text.trim(),
+              deliveryAddress: _deliveryAddress,
+              deliveryLatitude: _deliveryLatitude,
+              deliveryLongitude: _deliveryLongitude,
               deliveryNotes: _notesController.text.trim(),
             ),
       ),
@@ -122,7 +134,15 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                       onBudgetChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 28),
-                    _DeliveryAddressSection(controller: _addressController),
+                    AddressAutocompleteField(
+                      onAddressSelected: (address, lat, lng) {
+                        setState(() {
+                          _deliveryAddress = address;
+                          _deliveryLatitude = lat;
+                          _deliveryLongitude = lng;
+                        });
+                      },
+                    ),
                     const SizedBox(height: 28),
                     _DeliveryNotesSection(controller: _notesController),
                     const SizedBox(height: 24),
@@ -928,58 +948,6 @@ class _BudgetSection extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-// ===========================================================================
-// DELIVERY ADDRESS SECTION
-// ===========================================================================
-class _DeliveryAddressSection extends StatelessWidget {
-  const _DeliveryAddressSection({required this.controller});
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Delivery Address',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF202123),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: TextField(
-            controller: controller,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'e.g., 12 Adeola Odeku Street, Victoria Island...',
-              hintStyle: TextStyle(color: Color(0xFFB0B2AD), fontSize: 14),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(16),
-              prefixIcon: Padding(
-                padding: EdgeInsets.fromLTRB(16, 14, 8, 14),
-                child: Icon(
-                  Icons.location_on_outlined,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              prefixIconConstraints: BoxConstraints(),
-            ),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
-          ),
         ),
       ],
     );

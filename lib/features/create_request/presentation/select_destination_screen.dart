@@ -12,11 +12,15 @@ class SelectDestinationScreen extends ConsumerStatefulWidget {
     super.key,
     required this.budget,
     required this.deliveryAddress,
+    required this.deliveryLatitude,
+    required this.deliveryLongitude,
     required this.deliveryNotes,
   });
 
   final double budget;
   final String deliveryAddress;
+  final double deliveryLatitude;
+  final double deliveryLongitude;
   final String deliveryNotes;
 
   @override
@@ -36,10 +40,14 @@ class _SelectDestinationScreenState
         builder: (_) => ReviewRequestScreen(
           budget: widget.budget,
           deliveryAddress: widget.deliveryAddress,
+          deliveryLatitude: widget.deliveryLatitude,
+          deliveryLongitude: widget.deliveryLongitude,
           deliveryNotes: widget.deliveryNotes,
           storeName: market.name,
           storeLocation: market.address,
           storeImagePath: market.photoUrl,
+          marketLatitude: market.latitude,
+          marketLongitude: market.longitude,
         ),
       ),
     );

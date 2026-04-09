@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:math';
 
 import '../../../core/theme/app_colors.dart';
 import '../../home/providers/home_provider.dart';
@@ -11,28 +12,79 @@ class ReviewRequestScreen extends ConsumerWidget {
     super.key,
     required this.budget,
     required this.deliveryAddress,
+    required this.deliveryLatitude,
+    required this.deliveryLongitude,
     required this.deliveryNotes,
     required this.storeName,
     required this.storeLocation,
     this.storeImagePath,
+    required this.marketLatitude,
+    required this.marketLongitude,
   });
 
   final double budget;
   final String deliveryAddress;
+  final double deliveryLatitude;
+  final double deliveryLongitude;
   final String deliveryNotes;
   final String storeName;
   final String storeLocation;
   final String? storeImagePath;
+  final double? marketLatitude;
+  final double? marketLongitude;
 
-  static const double _deliveryFee = 800;
   static const double _serviceCharge = 1500;
-  // Flexible-only
   static const double _bufferRate = 0.10;
+  static const double _deliveryFeePerKm = 100; // ₦100/km
+  static const double _deliveryFeeMinimum = 500; // Minimum ₦500
 
-  double _fixedTotal() => budget + _deliveryFee + _serviceCharge;
+  // Haversine formula to calculate distance between two coordinates (in km)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadiusKm = 6371.0;
+
+    final dLat = _degreesToRadians(lat2 - lat1);
+    final dLon = _degreesToRadians(lon2 - lon1);
+
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(lat1)) *
+            cos(_degreesToRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadiusKm * c;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * (pi / 180.0);
+  }
+
+  double _getDeliveryFee() {
+    // If market or delivery coordinates are not available, use minimum fee
+    if (marketLatitude == null ||
+        marketLongitude == null ||
+        deliveryLatitude == 0 ||
+        deliveryLongitude == 0) {
+      return _deliveryFeeMinimum;
+    }
+
+    final distanceKm = _calculateDistance(
+      marketLatitude!,
+      marketLongitude!,
+      deliveryLatitude,
+      deliveryLongitude,
+    );
+
+    final calculatedFee = distanceKm * _deliveryFeePerKm;
+    return max(calculatedFee, _deliveryFeeMinimum);
+  }
+
+  double _fixedTotal(double deliveryFee) =>
+      budget + deliveryFee + _serviceCharge;
 
   double _flexibleBuffer() => budget * _bufferRate;
-  double _flexibleTotal() => budget + _deliveryFee + _serviceCharge + _flexibleBuffer();
+  double _flexibleTotal(double deliveryFee) =>
+      budget + deliveryFee + _serviceCharge + _flexibleBuffer();
 
   String _formatAmount(double amount) {
     final formatted = amount
@@ -48,6 +100,7 @@ class ReviewRequestScreen extends ConsumerWidget {
     final state = ref.read(createRequestProvider);
     final itemsSnapshot = state.items.toList();
     final marketType = state.marketType;
+    final deliveryFee = _getDeliveryFee();
 
     if (itemsSnapshot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +113,7 @@ class ReviewRequestScreen extends ConsumerWidget {
 
     try {
       final isFlexible = ref.read(createRequestProvider).isFlexible;
-      final totalBudget = isFlexible ? _flexibleTotal() : _fixedTotal();
+      final totalBudget = isFlexible ? _flexibleTotal(deliveryFee) : _fixedTotal(deliveryFee);
 
       await ref
           .read(createRequestProvider.notifier)
@@ -107,6 +160,9 @@ class ReviewRequestScreen extends ConsumerWidget {
     final items = state.items;
     final isSubmitting = state.isSubmitting;
     final isFlexible = state.isFlexible;
+    final deliveryFee = _getDeliveryFee();
+    final fixedTotal = _fixedTotal(deliveryFee);
+    final flexibleTotal = _flexibleTotal(deliveryFee);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2EF),
@@ -147,19 +203,6 @@ class ReviewRequestScreen extends ConsumerWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFDDE0DB),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: Color(0xFF5A5C56),
-                      size: 22,
                     ),
                   ),
                 ],
@@ -222,11 +265,11 @@ class ReviewRequestScreen extends ConsumerWidget {
                     _BillingSummary(
                       isFlexible: isFlexible,
                       itemsTotal: budget,
-                      deliveryFee: _deliveryFee,
+                      deliveryFee: deliveryFee,
                       serviceCharge: _serviceCharge,
                       buffer: _flexibleBuffer(),
-                      fixedTotal: _fixedTotal(),
-                      flexibleTotal: _flexibleTotal(),
+                      fixedTotal: fixedTotal,
+                      flexibleTotal: flexibleTotal,
                       formatAmount: _formatAmount,
                     ),
 
