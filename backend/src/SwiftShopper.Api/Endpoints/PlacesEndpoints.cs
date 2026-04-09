@@ -27,7 +27,9 @@ public static class PlacesEndpoints
                 // Call Nominatim API
                 var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(query)}&format=json&limit={limit}&addressdetails=1&countrycodes=NG";
 
-                var response = await HttpClient.GetAsync(url, ct);
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Add("User-Agent", "SwiftShopperApp/1.0");
+                var response = await HttpClient.SendAsync(request, ct);
                 if (!response.IsSuccessStatusCode)
                     return Results.Ok(new { results = new List<PlaceSuggestion>() });
 
