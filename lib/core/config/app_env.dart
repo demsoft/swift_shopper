@@ -50,4 +50,11 @@ class AppEnv {
   }
 
   static String get signalRHubUrl => '$apiBaseUrl/hubs/chat';
+
+  static const String _googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: '',
+  );
+
+  static String get googlePlacesApiKey => _googlePlacesApiKey;
 }

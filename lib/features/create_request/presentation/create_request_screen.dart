@@ -22,7 +22,6 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   late double _deliveryLatitude;
   late double _deliveryLongitude;
   late String _deliveryAddress;
-
   @override
   void initState() {
     super.initState();
@@ -218,6 +217,13 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                           _deliveryAddress = address;
                           _deliveryLatitude = lat;
                           _deliveryLongitude = lng;
+                        });
+                      },
+                      onPlaceSelected: (place) {
+                        setState(() {
+                          _deliveryAddress = place.description;
+                          _deliveryLatitude = place.lat;
+                          _deliveryLongitude = place.lng;
                         });
                       },
                     ),

@@ -1,127 +1,209 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'dart:math';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/places/place_result.dart';
+import '../../../../core/places/places_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/config/app_env.dart';
+import '../../../../core/utils/debounce.dart';
 
-class AddressSuggestion {
-  final String address;
-  final double latitude;
-  final double longitude;
+enum _FieldState { idle, tooShort, loading, results, noResults, error }
 
-  AddressSuggestion({
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-  });
-
-}
-
-class AddressAutocompleteField extends StatefulWidget {
+class AddressAutocompleteField extends ConsumerStatefulWidget {
   const AddressAutocompleteField({
     super.key,
     required this.onAddressSelected,
+    this.onPlaceSelected,
     this.initialValue = '',
   });
 
-  final Function(String address, double lat, double lng) onAddressSelected;
+  final void Function(String address, double lat, double lng) onAddressSelected;
+  final void Function(PlaceResult place)? onPlaceSelected;
   final String initialValue;
 
   @override
-  State<AddressAutocompleteField> createState() =>
+  ConsumerState<AddressAutocompleteField> createState() =>
       _AddressAutocompleteFieldState();
 }
 
-class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
+class _AddressAutocompleteFieldState
+    extends ConsumerState<AddressAutocompleteField> {
   late final TextEditingController _controller;
-  Timer? _debounce;
-  List<AddressSuggestion> _suggestions = [];
-  bool _isLoading = false;
-  bool _showSuggestions = false;
+  late final FocusNode _focusNode;
+  late final Debouncer _debouncer;
+
+  _FieldState _fieldState = _FieldState.idle;
+  List<PlacePrediction> _predictions = [];
+  List<PlacePrediction> _lastCachedPredictions = [];
+  String? _sessionToken;
+  bool _suppressSearch = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
+    _focusNode = FocusNode()..addListener(_onFocusChanged);
+    _debouncer = Debouncer(delay: const Duration(milliseconds: 400));
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _debouncer.dispose();
+    _focusNode
+      ..removeListener(_onFocusChanged)
+      ..dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  bool _suppressSearch = false;
+  String _generateSessionToken() {
+    final bytes = List<int>.generate(16, (_) => Random.secure().nextInt(256));
+    return base64UrlEncode(bytes);
+  }
 
-  Future<void> _searchAddresses(String query) async {
-    if (query.length < 3) {
-      setState(() {
-        _suggestions = [];
-        _showSuggestions = false;
-      });
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final url =
-          '${AppEnv.apiBaseUrl}/api/places/search?query=${Uri.encodeQueryComponent(query)}&limit=10';
-
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(response.body);
-        final results = (json['results'] as List<dynamic>? ?? [])
-            .map((item) => AddressSuggestion(
-                  address: item['address'] as String? ?? '',
-                  latitude: (item['latitude'] as num?)?.toDouble() ?? 0.0,
-                  longitude: (item['longitude'] as num?)?.toDouble() ?? 0.0,
-                ))
-            .where((s) => s.address.isNotEmpty && !(s.latitude == 0.0 && s.longitude == 0.0))
-            .toList();
-
-        if (mounted) {
-          setState(() {
-            _suggestions = results;
-            _showSuggestions = results.isNotEmpty;
-          });
-        }
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _sessionToken ??= _generateSessionToken();
+    } else {
+      if (mounted) {
+        setState(() => _fieldState = _FieldState.idle);
       }
-    } catch (e) {
-      debugPrint('[Places] error: $e');
-      if (mounted) setState(() => _suggestions = []);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _onTextChanged(String value) {
     if (_suppressSearch) return;
-    _debounce?.cancel();
-    _debounce =
-        Timer(const Duration(milliseconds: 400), () => _searchAddresses(value));
+
+    widget.onAddressSelected(value.trim(), 0.0, 0.0);
+
+    final trimmed = value.trim();
+    if (trimmed.length < 3) {
+      _debouncer.cancel();
+      setState(() {
+        _fieldState =
+            trimmed.isEmpty ? _FieldState.idle : _FieldState.tooShort;
+        _predictions = [];
+      });
+      return;
+    }
+
+    setState(() => _fieldState = _FieldState.loading);
+    _debouncer.run(() => _fetchPredictions(trimmed));
   }
 
-  void _selectSuggestion(AddressSuggestion suggestion) {
+  Future<void> _fetchPredictions(String query) async {
+    _sessionToken ??= _generateSessionToken();
+    final token = _sessionToken!;
+    final service = ref.read(placesServiceProvider);
+
+    final results = await service.getAutocomplete(query, token);
+
+    if (!mounted) return;
+
+    if (results == null) {
+      // Dedup or network error — show stale cache if available
+      if (_lastCachedPredictions.isNotEmpty) {
+        setState(() {
+          _predictions = _lastCachedPredictions;
+          _fieldState = _FieldState.results;
+        });
+      } else {
+        setState(() => _fieldState = _FieldState.error);
+      }
+      return;
+    }
+
+    if (results.isEmpty) {
+      setState(() {
+        _predictions = [];
+        _fieldState = _FieldState.noResults;
+      });
+      return;
+    }
+
+    _lastCachedPredictions = results;
+    setState(() {
+      _predictions = results;
+      _fieldState = _FieldState.results;
+    });
+  }
+
+  Future<void> _selectPrediction(PlacePrediction prediction) async {
     _suppressSearch = true;
-    _controller.text = suggestion.address;
+    _controller.text = prediction.description;
+    setState(() {
+      _fieldState = _FieldState.loading;
+      _predictions = [];
+    });
+
+    final token = _sessionToken ?? _generateSessionToken();
+    _sessionToken = null; // close billing session before await
+
+    final service = ref.read(placesServiceProvider);
+    final place = await service.getPlaceDetails(prediction, token);
+
     _suppressSearch = false;
-    widget.onAddressSelected(
-      suggestion.address,
-      suggestion.latitude,
-      suggestion.longitude,
+
+    if (!mounted) return;
+
+    if (place != null) {
+      widget.onAddressSelected(place.description, place.lat, place.lng);
+      widget.onPlaceSelected?.call(place);
+    } else {
+      widget.onAddressSelected(prediction.description, 0.0, 0.0);
+    }
+
+    setState(() => _fieldState = _FieldState.idle);
+  }
+
+  Widget? _buildSuffix() {
+    if (_fieldState == _FieldState.loading) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+      );
+    }
+    return null;
+  }
+
+  Widget? _buildStatusMessage() {
+    switch (_fieldState) {
+      case _FieldState.tooShort:
+        return _statusText('Type at least 3 characters');
+      case _FieldState.noResults:
+        return _statusText('No results found');
+      case _FieldState.error:
+        return _statusText('Search unavailable — check your connection');
+      default:
+        return null;
+    }
+  }
+
+  Widget _statusText(String message) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Text(
+        message,
+        style: const TextStyle(fontSize: 12, color: Color(0xFF9A9C97)),
+      ),
     );
-    setState(() => _showSuggestions = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final showDropdown =
+        _fieldState == _FieldState.results && _predictions.isNotEmpty;
+    final statusMsg = _buildStatusMessage();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -140,20 +222,21 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 controller: _controller,
+                focusNode: _focusNode,
                 onChanged: _onTextChanged,
-                onTap: () {
-                  if (_suggestions.isNotEmpty) {
-                    setState(() => _showSuggestions = true);
-                  }
-                },
                 maxLines: 1,
                 decoration: InputDecoration(
-                  hintText: 'Search for an address...',
-                  hintStyle:
-                      const TextStyle(color: Color(0xFFB0B2AD), fontSize: 14),
+                  hintText: _fieldState == _FieldState.idle
+                      ? 'Start typing to search…'
+                      : 'Search for an address…',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFFB0B2AD),
+                    fontSize: 14,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
                   prefixIcon: const Padding(
@@ -165,42 +248,35 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
                     ),
                   ),
                   prefixIconConstraints: const BoxConstraints(),
-                  suffixIcon: _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
+                  suffixIcon: _buildSuffix(),
                   suffixIconConstraints: const BoxConstraints(),
                 ),
                 style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
               ),
-              if (_showSuggestions && _suggestions.isNotEmpty)
+              if (statusMsg != null)
                 Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(
-                      top: BorderSide(
-                        color: const Color(0xFFEEF0ED),
-                      ),
+                      top: BorderSide(color: Color(0xFFEEF0ED)),
+                    ),
+                  ),
+                  child: statusMsg,
+                ),
+              if (showDropdown)
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFEEF0ED)),
                     ),
                   ),
                   constraints: const BoxConstraints(maxHeight: 200),
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: _suggestions.length,
+                    itemCount: _predictions.length,
                     itemBuilder: (context, index) {
-                      final suggestion = _suggestions[index];
+                      final prediction = _predictions[index];
                       return GestureDetector(
-                        onTap: () => _selectSuggestion(suggestion),
+                        onTap: () => _selectPrediction(prediction),
                         child: Container(
                           color: Colors.transparent,
                           padding: const EdgeInsets.symmetric(
@@ -217,7 +293,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  suggestion.address,
+                                  prediction.description,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
