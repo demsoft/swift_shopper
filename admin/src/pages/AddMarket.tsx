@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createMarket, uploadImage } from '../lib/api';
+import PlacesAutocomplete from '../components/PlacesAutocomplete';
 
 // ── Data ───────────────────────────────────────────────────────────────────
 
@@ -232,26 +233,23 @@ export default function AddMarket() {
                     </div>
                   </div>
 
-                  {/* Full Address */}
+                  {/* Full Address — autocomplete fills lat/lng automatically */}
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
                       Full Address
                     </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-3.5 text-secondary text-lg">
-                        location_on
-                      </span>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Enter physical address in Lagos..."
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm placeholder:text-secondary/50"
-                      />
-                    </div>
+                    <PlacesAutocomplete
+                      placeholder="Search for market address in Lagos…"
+                      onPlaceSelected={({ address: addr, lat, lng }) => {
+                        setAddress(addr);
+                        setLatitude(String(lat));
+                        setLongitude(String(lng));
+                      }}
+                      inputClassName="py-3 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white placeholder:text-secondary/50"
+                    />
                   </div>
 
-                  {/* GPS Coordinates */}
+                  {/* GPS Coordinates — read-only, filled by autocomplete */}
                   <div>
                     <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
                       Latitude
@@ -265,7 +263,7 @@ export default function AddMarket() {
                         step="any"
                         value={latitude}
                         onChange={(e) => setLatitude(e.target.value)}
-                        placeholder="e.g. 6.5244"
+                        placeholder="Auto-filled from address"
                         className="w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm placeholder:text-secondary/50"
                       />
                     </div>
@@ -283,7 +281,7 @@ export default function AddMarket() {
                         step="any"
                         value={longitude}
                         onChange={(e) => setLongitude(e.target.value)}
-                        placeholder="e.g. 3.3792"
+                        placeholder="Auto-filled from address"
                         className="w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm placeholder:text-secondary/50"
                       />
                     </div>

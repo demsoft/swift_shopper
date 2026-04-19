@@ -1,5 +1,6 @@
 # Local secrets — never commit
 dart_defines.env
+dart_defines.json
 
 # Miscellaneous
 *.class

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMarkets, updateMarket, deleteMarket, uploadImage, type AdminMarketDto } from '../lib/api';
+import PlacesAutocomplete from '../components/PlacesAutocomplete';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -204,10 +205,17 @@ function EditMarketModal({ dto, onClose, onSaved }: { dto: AdminMarketDto; onClo
             </div>
 
             {/* Address */}
-            <div>
-              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Address</label>
-              <input value={address} onChange={e => setAddress(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
+            <PlacesAutocomplete
+              label="Address"
+              initialValue={address}
+              placeholder="Search for market address…"
+              onPlaceSelected={({ address: addr, lat, lng }) => {
+                setAddress(addr);
+                setLatitude(String(lat));
+                setLongitude(String(lng));
+              }}
+              inputClassName="py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest focus:ring-2 focus:ring-primary/20"
+            />
 
             {/* Hours + Status */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
