@@ -1678,6 +1678,30 @@ public class DbSwiftShopperService : ISwiftShopperService
         };
     }
 
+    public async Task<AdminUserDto?> UpdateAdminUserAsync(string userId, UpdateAdminUserDto dto, CancellationToken ct)
+    {
+        var user = await _dbContext.UserAccounts.FindAsync([userId], ct);
+        if (user is null || user.Role != UserRole.Admin) return null;
+
+        user.FullName = dto.FullName.Trim();
+        user.PhoneNumber = dto.PhoneNumber.Trim();
+        user.IsActive = dto.IsActive;
+        await _dbContext.SaveChangesAsync(ct);
+
+        return new AdminUserDto
+        {
+            UserId = user.Id,
+            FullName = user.FullName,
+            Initials = ToInitials(user.FullName),
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            AdminRole = "SuperAdmin",
+            IsActive = user.IsActive,
+            ForcePasswordReset = false,
+            CreatedAt = user.CreatedAt
+        };
+    }
+
     public async Task UpdateUserLocationAsync(string userId, double latitude, double longitude, CancellationToken cancellationToken)
     {
         var user = await _dbContext.UserAccounts.FindAsync([userId], cancellationToken);

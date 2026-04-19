@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { getAdminUsers, updateAdminUser, type AdminUserDto } from '../lib/api';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -16,15 +18,6 @@ interface ServiceZone {
   note?: string;
 }
 
-interface AdminUser {
-  initials: string;
-  name: string;
-  email: string;
-  role: string;
-  permissions: string;
-  lastLogin: string;
-}
-
 // ── Mock data ──────────────────────────────────────────────────────────────
 
 const notifToggles: NotifToggle[] = [
@@ -39,20 +32,144 @@ const zones: ServiceZone[] = [
   { name: 'Lekki Phase II',  status: 'DORMANT', note: 'Planned Q4 2023' },
 ];
 
-const admins: AdminUser[] = [
-  {
-    initials: 'CA', name: 'Chidi Azikiwe',  email: 'chidi@swiftshopper.ng',
-    role: 'SUPER ADMIN',   permissions: 'Full system access, payments, service areas...',
-    lastLogin: 'Today, 08:42 AM',
-  },
-  {
-    initials: 'FO', name: 'Funke Ojo',      email: 'funke@swiftshopper.ng',
-    role: 'FLEET MANAGER', permissions: 'Shopper management, logistics, support...',
-    lastLogin: 'Yesterday, 06:15 PM',
-  },
-];
-
 // ── Sub-components ─────────────────────────────────────────────────────────
+
+function EditAdminModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUserDto;
+  onClose: () => void;
+  onSaved: (updated: AdminUserDto) => void;
+}) {
+  const [fullName, setFullName] = useState(user.fullName);
+  const [phoneNumber, setPhoneNumber] = useState(user.phoneNumber);
+  const [isActive, setIsActive] = useState(user.isActive);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) return;
+    setError('');
+    setSaving(true);
+    try {
+      const updated = await updateAdminUser(user.userId, {
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        isActive,
+      });
+      onSaved(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface w-full max-w-md rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <form onSubmit={handleSubmit}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/20">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary-fixed-dim/40 text-primary flex items-center justify-center text-[11px] font-bold">
+                {user.initials}
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-on-surface">Edit Administrator</h3>
+                <p className="text-xs text-secondary">{user.email}</p>
+              </div>
+            </div>
+            <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+              <span className="material-symbols-outlined text-secondary">close</span>
+            </button>
+          </div>
+
+          <div className="px-6 py-5 flex flex-col gap-4">
+            {error && (
+              <p className="text-sm text-error bg-error-container/30 rounded-xl px-4 py-3">{error}</p>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Full Name</label>
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Phone Number</label>
+              <input
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">Email Address</label>
+              <input
+                value={user.email}
+                disabled
+                className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-sm text-secondary cursor-not-allowed"
+              />
+              <p className="text-xs text-secondary mt-1">Email cannot be changed.</p>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm font-semibold">Account Active</p>
+                <p className="text-xs text-secondary">Inactive admins cannot log in.</p>
+              </div>
+              <div
+                className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer ${isActive ? 'bg-primary' : 'bg-outline-variant'}`}
+                onClick={() => setIsActive((v) => !v)}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isActive ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-outline-variant/20 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-surface-container hover:bg-surface-container-high transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !fullName.trim()}
+              className="px-6 py-2 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {saving && (
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -72,6 +189,18 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [commission, setCommission] = useState(12);
   const [deliveryFee, setDeliveryFee] = useState(1200);
+
+  const [adminUsers, setAdminUsers] = useState<AdminUserDto[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(true);
+  const [adminsError, setAdminsError] = useState('');
+  const [editingAdmin, setEditingAdmin] = useState<AdminUserDto | null>(null);
+
+  useEffect(() => {
+    getAdminUsers()
+      .then(setAdminUsers)
+      .catch((e: unknown) => setAdminsError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setAdminsLoading(false));
+  }, []);
 
   const toggleNotif = (key: string) =>
     setNotifs((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -287,61 +416,87 @@ export default function Settings() {
                   <p className="text-sm text-secondary">Manage administrative access levels for the Lagos region.</p>
                 </div>
               </div>
-              <button className="px-5 py-2.5 bg-on-surface text-white rounded-xl font-bold text-sm hover:bg-neutral-800 transition-all flex items-center gap-2">
+              <Link
+                to="/settings/users/add"
+                className="px-5 py-2.5 bg-on-surface text-white rounded-xl font-bold text-sm hover:bg-neutral-800 transition-all flex items-center gap-2"
+              >
                 <span className="material-symbols-outlined text-sm">person_add</span>
                 Invite Admin
-              </button>
+              </Link>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-low">
-                  <tr>
-                    {['Administrator', 'Role', 'Permissions', 'Last Login', 'Status', ''].map((h) => (
-                      <th key={h} className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-secondary">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/10">
-                  {admins.map((a) => (
-                    <tr key={a.email} className="hover:bg-surface transition-colors">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                            {a.initials}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{a.name}</p>
-                            <p className="text-xs text-secondary">{a.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="px-3 py-1 bg-surface-container text-on-surface text-[10px] font-bold rounded-full">
-                          {a.role}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <p className="text-xs text-on-surface-variant max-w-xs truncate">{a.permissions}</p>
-                      </td>
-                      <td className="px-8 py-5 text-sm text-secondary">{a.lastLogin}</td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          <span className="text-xs font-medium">Active</span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button className="text-secondary hover:text-on-surface transition-colors">
-                          <span className="material-symbols-outlined">more_horiz</span>
-                        </button>
-                      </td>
+              {adminsLoading && (
+                <div className="flex items-center justify-center py-12 gap-3 text-secondary">
+                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  <span className="text-sm font-medium">Loading administrators…</span>
+                </div>
+              )}
+              {adminsError && (
+                <div className="flex items-center gap-2 mx-8 my-6 px-4 py-3 bg-error-container/30 rounded-xl text-sm text-error">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  {adminsError}
+                </div>
+              )}
+              {!adminsLoading && !adminsError && adminUsers.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-secondary">
+                  <span className="material-symbols-outlined text-4xl opacity-30">admin_panel_settings</span>
+                  <p className="text-sm">No administrator accounts yet.</p>
+                </div>
+              )}
+              {!adminsLoading && adminUsers.length > 0 && (
+                <table className="w-full text-left">
+                  <thead className="bg-surface-container-low">
+                    <tr>
+                      {['Administrator', 'Role', 'Phone', 'Joined', 'Status', ''].map((h) => (
+                        <th key={h} className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-secondary">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10">
+                    {adminUsers.map((a) => (
+                      <tr key={a.userId} className="hover:bg-surface transition-colors">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary-fixed-dim/40 text-primary flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+                              {a.initials}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">{a.fullName}</p>
+                              <p className="text-xs text-secondary">{a.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <span className="px-3 py-1 bg-surface-container text-on-surface text-[10px] font-bold rounded-full uppercase tracking-wide">
+                            {a.adminRole.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-8 py-5 text-sm text-secondary">{a.phoneNumber || '—'}</td>
+                        <td className="px-8 py-5 text-sm text-secondary">
+                          {new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-1.5 h-1.5 rounded-full ${a.isActive ? 'bg-primary' : 'bg-outline-variant'}`} />
+                            <span className="text-xs font-medium">{a.isActive ? 'Active' : 'Inactive'}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5 text-right">
+                          <button onClick={() => setEditingAdmin(a)} className="text-secondary hover:text-on-surface transition-colors">
+                            <span className="material-symbols-outlined">more_horiz</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
 
@@ -358,6 +513,17 @@ export default function Settings() {
         </footer>
 
       </div>
+
+      {editingAdmin && (
+        <EditAdminModal
+          user={editingAdmin}
+          onClose={() => setEditingAdmin(null)}
+          onSaved={(updated) => {
+            setAdminUsers((prev) => prev.map((u) => u.userId === updated.userId ? updated : u));
+            setEditingAdmin(null);
+          }}
+        />
+      )}
     </main>
   );
 }

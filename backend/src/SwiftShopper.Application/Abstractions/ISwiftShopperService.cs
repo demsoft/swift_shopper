@@ -92,6 +92,7 @@ public interface ISwiftShopperService
     // ── Admin: Users ──────────────────────────────────────────────────────────
     Task<IReadOnlyList<AdminUserDto>> GetAdminUsersAsync(CancellationToken cancellationToken);
     Task<AdminUserDto> CreateAdminUserAsync(CreateAdminUserDto dto, CancellationToken cancellationToken);
+    Task<AdminUserDto?> UpdateAdminUserAsync(string userId, UpdateAdminUserDto dto, CancellationToken cancellationToken);
 
     // ── User: Location ────────────────────────────────────────────────────────
     Task UpdateUserLocationAsync(string userId, double latitude, double longitude, CancellationToken cancellationToken);

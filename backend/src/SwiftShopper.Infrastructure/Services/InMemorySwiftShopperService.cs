@@ -1206,6 +1206,21 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(user);
     }
 
+    public Task<AdminUserDto?> UpdateAdminUserAsync(string userId, UpdateAdminUserDto dto, CancellationToken ct)
+    {
+        var user = _adminUsers.FirstOrDefault(u => u.UserId == userId);
+        if (user is null) return Task.FromResult<AdminUserDto?>(null);
+        _adminUsers.Remove(user);
+        var updated = user with
+        {
+            FullName = dto.FullName.Trim(),
+            PhoneNumber = dto.PhoneNumber.Trim(),
+            IsActive = dto.IsActive,
+        };
+        _adminUsers.Add(updated);
+        return Task.FromResult<AdminUserDto?>(updated);
+    }
+
     public Task UpdateUserLocationAsync(string userId, double latitude, double longitude, CancellationToken cancellationToken)
         => Task.CompletedTask;
 

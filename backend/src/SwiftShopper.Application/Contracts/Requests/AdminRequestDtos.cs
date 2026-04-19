@@ -40,6 +40,13 @@ public record CreateAdminUserDto
     public bool ForcePasswordReset { get; init; } = true;
 }
 
+public record UpdateAdminUserDto
+{
+    public string FullName { get; init; } = string.Empty;
+    public string PhoneNumber { get; init; } = string.Empty;
+    public bool IsActive { get; init; } = true;
+}
+
 public record UpdateUserLocationDto
 {
     public double Latitude { get; init; }

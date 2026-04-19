@@ -327,6 +327,16 @@ export function getAdminUsers(): Promise<AdminUserDto[]> {
   return request('/api/admin/users');
 }
 
+export function updateAdminUser(
+  userId: string,
+  body: { fullName: string; phoneNumber: string; isActive: boolean },
+): Promise<AdminUserDto> {
+  return request<AdminUserDto>(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 export function createAdminUser(body: {
   fullName: string;
   email: string;

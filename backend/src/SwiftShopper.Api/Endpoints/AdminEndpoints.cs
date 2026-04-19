@@ -263,5 +263,16 @@ public static class AdminEndpoints
             return Results.Created($"/api/admin/users/{user.UserId}", user);
         })
         .WithSummary("Create a new admin portal user with a role assignment.");
+
+        group.MapPatch("/users/{userId}", async (
+            string userId,
+            UpdateAdminUserDto body,
+            ISwiftShopperService svc,
+            CancellationToken ct) =>
+        {
+            var user = await svc.UpdateAdminUserAsync(userId, body, ct);
+            return user is null ? Results.NotFound() : Results.Ok(user);
+        })
+        .WithSummary("Update an admin user's name, phone, and active status.");
     }
 }

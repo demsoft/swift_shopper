@@ -60,7 +60,7 @@ export default function PlacesAutocomplete({
 }: Props) {
   const [value, setValue] = useState(initialValue);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'results' | 'no-results' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'results' | 'no-results' | 'error' | 'details-error'>('idle');
   const [open, setOpen] = useState(false);
 
   const sessionToken = useRef(newToken());
@@ -125,6 +125,7 @@ export default function PlacesAutocomplete({
     if (suppressSearch.current) return;
     const v = e.target.value;
     setValue(v);
+    if (status === 'details-error') setStatus('idle');
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
@@ -141,6 +142,7 @@ export default function PlacesAutocomplete({
   }
 
   async function selectPrediction(prediction: Prediction) {
+    const previousValue = value; // snapshot before we change anything
     suppressSearch.current = true;
     setValue(prediction.description);
     setOpen(false);
@@ -150,29 +152,34 @@ export default function PlacesAutocomplete({
     const token = sessionToken.current;
     sessionToken.current = newToken(); // close billing session
 
+    let failed = false;
     try {
+      const signal = typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(8000)
+        : undefined;
       const params = new URLSearchParams({ placeid: prediction.placeId, sessiontoken: token });
-      const res = await fetch(`${BASE_URL}/api/places/google/details?${params}`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) throw new Error('details failed');
+      const res = await fetch(`${BASE_URL}/api/places/google/details?${params}`, { signal });
+      if (!res.ok) throw new Error(`details HTTP ${res.status}`);
 
       const place = await res.json() as PlaceResult;
+      if (!place.lat && !place.lng) throw new Error('details returned no coordinates');
+
       setValue(place.address);
       onPlaceSelected(place);
     } catch (e) {
       console.error('[Places] details error:', e);
-      onPlaceSelected({ address: prediction.description, lat: 0, lng: 0 });
+      failed = true;
+      setValue(previousValue); // revert — don't corrupt parent's lat/lng with zeros
     } finally {
       suppressSearch.current = false;
-      setStatus('idle');
+      setStatus(failed ? 'details-error' : 'idle');
     }
   }
 
   const showDropdown = open && (status === 'results' || status === 'no-results' || status === 'error');
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={className}>
       {label && (
         <label className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5">
           {label}
@@ -201,6 +208,13 @@ export default function PlacesAutocomplete({
           </svg>
         )}
       </div>
+
+      {status === 'details-error' && (
+        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+          <span className="material-symbols-outlined text-sm">error</span>
+          Could not retrieve coordinates — please try selecting again or check your connection.
+        </p>
+      )}
 
       {showDropdown && (
         <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-outline-variant/20 overflow-hidden max-h-56 overflow-y-auto">
