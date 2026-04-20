@@ -7,10 +7,14 @@ class OrderSummaryScreen extends StatelessWidget {
     super.key,
     this.orderId = '#SS-28105',
     this.date = '12 Feb',
+    this.deliveryAddress = '',
+    this.deliveryNotes = '',
   });
 
   final String orderId;
   final String date;
+  final String deliveryAddress;
+  final String deliveryNotes;
 
   static const _items = [
     _SummaryItem(
@@ -296,8 +300,10 @@ class OrderSummaryScreen extends StatelessWidget {
 
   // ── DELIVERY CARD ─────────────────────────────────────────────────────────
   Widget _buildDeliveryCard() {
+    final hasAddress = deliveryAddress.isNotEmpty;
+    final hasNotes = deliveryNotes.isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -309,45 +315,106 @@ class OrderSummaryScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F4F0),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.location_on_rounded,
-              color: AppColors.primary,
-              size: 22,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F4F0),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DELIVERY TO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF9A9C97),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        hasAddress ? deliveryAddress : 'No address provided',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: hasAddress ? const Color(0xFF0D1512) : const Color(0xFF9A9C97),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'DELIVERY TO',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF9A9C97),
-                  letterSpacing: 0.8,
-                ),
+          if (hasNotes) ...[
+            const Divider(height: 1, color: Color(0xFFF0F2EF)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8ED),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.sticky_note_2_outlined,
+                      color: Color(0xFFD4860A),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'DELIVERY NOTES',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9A9C97),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          deliveryNotes,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF5A5C56),
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 3),
-              const Text(
-                '22 Victoria Island, Lagos',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0D1512),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );

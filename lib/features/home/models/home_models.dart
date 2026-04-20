@@ -22,6 +22,8 @@ class ActiveOrder {
     this.storePhotoUrl,
     this.pickedItemsCount = 0,
     this.totalItemsCount = 0,
+    this.deliveryAddress = '',
+    this.deliveryNotes = '',
   });
 
   final String orderId;
@@ -38,6 +40,8 @@ class ActiveOrder {
   final String? storePhotoUrl;
   final int pickedItemsCount;
   final int totalItemsCount;
+  final String deliveryAddress;
+  final String deliveryNotes;
 }
 
 class RecentRequest {

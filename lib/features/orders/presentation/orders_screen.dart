@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_models.dart';
 import '../../home/presentation/active_job_screen.dart';
 import '../../home/presentation/order_details_screen.dart';
+import '../../home/presentation/shopper_job_detail_screen.dart';
 import '../../home/providers/home_provider.dart';
 
 // ignore_for_file: unused_element
@@ -895,7 +896,15 @@ class _ShopperOrderHistoryScreenState
                     children: orders
                         .map((o) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _DeliveryHistoryCard(order: o),
+                              child: GestureDetector(
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        ShopperJobDetailScreen(order: o),
+                                  ),
+                                ),
+                                child: _DeliveryHistoryCard(order: o),
+                              ),
                             ))
                         .toList(),
                   );

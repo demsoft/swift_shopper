@@ -203,13 +203,13 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                       onDecrement: notifier.decrementQuantity,
                       onIncrement: notifier.incrementQuantity,
                     ),
-                    const SizedBox(height: 28),
-                    _BudgetSection(
-                      budgetController: _budgetController,
-                      isFlexible: state.isFlexible,
-                      onToggleFlexible: notifier.toggleFlexible,
-                      onBudgetChanged: (_) => setState(() {}),
-                    ),
+                    // const SizedBox(height: 28),
+                    // _BudgetSection(
+                    //   budgetController: _budgetController,
+                    //   isFlexible: state.isFlexible,
+                    //   onToggleFlexible: notifier.toggleFlexible,
+                    //   onBudgetChanged: (_) => setState(() {}),
+                    // ),
                     const SizedBox(height: 28),
                     AddressAutocompleteField(
                       onAddressSelected: (address, lat, lng) {

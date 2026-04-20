@@ -12,16 +12,20 @@ class OrderSuccessScreen extends ConsumerWidget {
     super.key,
     required this.orderType,
     required this.totalAmount,
+    required this.deliveryFee,
     required this.storeName,
     required this.storeLocation,
     required this.items,
+    this.storeImagePath,
   });
 
   final String orderType;
   final double totalAmount;
+  final double deliveryFee;
   final String storeName;
   final String storeLocation;
   final List<RequestItem> items;
+  final String? storeImagePath;
 
   String _formatAmount(double amount) {
     final formatted = amount
@@ -130,17 +134,26 @@ class OrderSuccessScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                       child: Row(
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F2EF),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.shopping_basket_rounded,
-                              color: AppColors.primary,
-                              size: 24,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: storeImagePath != null
+                                  ? (storeImagePath!.startsWith('http')
+                                      ? Image.network(
+                                          storeImagePath!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              _FallbackIcon(),
+                                        )
+                                      : Image.asset(
+                                          storeImagePath!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              _FallbackIcon(),
+                                        ))
+                                  : _FallbackIcon(),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -248,8 +261,10 @@ class OrderSuccessScreen extends ConsumerWidget {
                       builder: (_) => RequestStatusScreen(
                         orderType: orderType,
                         totalAmount: totalAmount,
+                        deliveryFee: deliveryFee,
                         storeName: storeName,
                         items: items,
+                        storeImagePath: storeImagePath,
                       ),
                     ),
                   );
@@ -317,6 +332,20 @@ class OrderSuccessScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FallbackIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF0F2EF),
+      child: const Icon(
+        Icons.shopping_basket_rounded,
+        color: AppColors.primary,
+        size: 24,
       ),
     );
   }

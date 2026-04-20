@@ -30,7 +30,14 @@ class _ShoppingCompletedScreenState
       final repo = ref.read(swiftShopperRepositoryProvider);
       await repo.startDelivery(orderId: widget.job.orderId);
       ref.invalidate(activeJobProvider);
-      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+      ref.invalidate(shopperOrderHistoryProvider);
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => _DeliveryStartedScreen(job: widget.job),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -703,6 +710,229 @@ class _PhotoViewScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// DELIVERY STARTED SUCCESS SCREEN
+// ===========================================================================
+class _DeliveryStartedScreen extends StatelessWidget {
+  const _DeliveryStartedScreen({required this.job});
+
+  final ActiveJobData job;
+
+  String _fmt(double v) => v
+      .toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    final foundItems = job.items.where((i) => i.status == 1).toList();
+    final subtotal = foundItems.fold<double>(
+      0,
+      (sum, i) => sum + (i.foundPrice ?? i.estimatedPrice),
+    );
+    final total = subtotal + job.shopperFee + job.deliveryFee + job.serviceFee;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F4F1),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+
+              // ── Animated success icon ──
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.primary.withValues(alpha: 0.18),
+                          AppColors.primary.withValues(alpha: 0.06),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_shipping_rounded,
+                      color: Colors.white,
+                      size: 44,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // ── Title ──
+              const Text(
+                'Order On Its Way!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0D1512),
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'You\'ve confirmed the order for ${job.customerName.isNotEmpty ? job.customerName : 'the customer'}. '
+                'They\'ve been notified and are expecting delivery.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF7A7C77),
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // ── Summary card ──
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F4EA),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.storefront_rounded,
+                              color: AppColors.primary, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                job.storeName,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0D1512),
+                                ),
+                              ),
+                              Text(
+                                '${foundItems.length} item${foundItems.length == 1 ? '' : 's'} picked',
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF9A9C97)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '₦${_fmt(total)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const Text(
+                              'TOTAL',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF9A9C97),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (job.deliveryAddress.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      const Divider(height: 1, color: Color(0xFFF0F2EF)),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              job.deliveryAddress,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF5A5C56)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const Spacer(flex: 2),
+
+              // ── Back to Home ──
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.of(context).popUntil((r) => r.isFirst),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                  ),
+                  child: const Text(
+                    'Back to Home',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -645,6 +645,66 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       ),
       child: Column(
         children: [
+          // Delivery address
+          if (order.deliveryAddress.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on_rounded, color: Colors.white70, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DELIVERY TO',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white54, letterSpacing: 0.6),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        order.deliveryAddress,
+                        style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(color: Colors.white24, height: 1),
+            ),
+          ],
+          // Delivery notes
+          if (order.deliveryNotes.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.sticky_note_2_outlined, color: Colors.white70, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DELIVERY NOTES',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white54, letterSpacing: 0.6),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        order.deliveryNotes,
+                        style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(color: Colors.white24, height: 1),
+            ),
+          ],
           // Breakdown rows
           _SummaryRow(
             label: isEstimate ? 'Items (estimated)' : 'Items subtotal',

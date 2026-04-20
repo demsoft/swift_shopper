@@ -75,6 +75,13 @@ final orderItemsProvider = FutureProvider.family<List<ActiveJobItem>, String>((
       .getOrderItems(orderId: orderId);
 });
 
+final orderSummaryProvider =
+    FutureProvider.family<OrderSummaryData?, String>((ref, orderId) async {
+  return ref
+      .read(swiftShopperRepositoryProvider)
+      .getOrderSummary(orderId: orderId);
+});
+
 final supermarketsProvider = FutureProvider<List<MarketData>>((ref) async {
   final repository = ref.read(swiftShopperRepositoryProvider);
   return repository.getMarkets(type: 'Supermarket');

@@ -457,41 +457,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           if (_replyingTo != null) ...[
             Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              margin: const EdgeInsets.only(bottom: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F6F4),
-                borderRadius: BorderRadius.circular(12),
-                border: const Border(
-                  left: BorderSide(color: AppColors.primary, width: 3),
-                ),
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Replying to',
-                            style: TextStyle(
-                                fontSize: 11,
+              clipBehavior: Clip.antiAlias,
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(width: 4, color: AppColors.primary),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 9, 4, 9),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Replying to',
+                              style: TextStyle(
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primary)),
-                        const SizedBox(height: 2),
-                        Text(
-                          _replyingTo!.text ?? (_replyingTo!.imageUrl != null ? '📷 Photo' : ''),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                                color: AppColors.primary,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _replyingTo!.text ??
+                                  (_replyingTo!.imageUrl != null ? '📷 Photo' : '📎 Attachment'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF5A5C56),
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() => _replyingTo = null),
-                    child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF9A9C97)),
-                  ),
-                ],
+                    GestureDetector(
+                      onTap: () => setState(() => _replyingTo = null),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppColors.primary.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

@@ -183,9 +183,11 @@ class _ReviewRequestScreenState extends ConsumerState<ReviewRequestScreen> {
                 ? 'Supermarket Order'
                 : 'Open Market Order',
             totalAmount: totalBudget,
+            deliveryFee: deliveryFee,
             storeName: widget.storeName,
             storeLocation: widget.storeLocation,
             items: itemsSnapshot,
+            storeImagePath: widget.storeImagePath,
           ),
         ),
       );
@@ -649,6 +651,17 @@ class _ItemReviewCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF9A9C97),
+                    ),
+                  ),
+                ],
+                if ((item.price as double) > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '₦${(item.price as double).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
                     ),
                   ),
                 ],

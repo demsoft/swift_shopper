@@ -12,14 +12,18 @@ class RequestStatusScreen extends ConsumerStatefulWidget {
     super.key,
     required this.orderType,
     required this.totalAmount,
+    required this.deliveryFee,
     required this.storeName,
     required this.items,
+    this.storeImagePath,
   });
 
   final String orderType;
   final double totalAmount;
+  final double deliveryFee;
   final String storeName;
   final List<RequestItem> items;
+  final String? storeImagePath;
 
   @override
   ConsumerState<RequestStatusScreen> createState() =>
@@ -349,18 +353,80 @@ class _RequestStatusScreenState extends ConsumerState<RequestStatusScreen>
             ),
           ),
 
-          // Order name
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: Text(
-              widget.storeName,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0D1512),
+          // Store image + name
+          if (widget.storeImagePath != null)
+            ClipRRect(
+              child: SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    widget.storeImagePath!.startsWith('http')
+                        ? Image.network(
+                            widget.storeImagePath!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFD5DAD4),
+                              child: const Icon(Icons.storefront_rounded,
+                                  color: Color(0xFF9A9C97), size: 40),
+                            ),
+                          )
+                        : Image.asset(
+                            widget.storeImagePath!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFD5DAD4),
+                              child: const Icon(Icons.storefront_rounded,
+                                  color: Color(0xFF9A9C97), size: 40),
+                            ),
+                          ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 50,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.5),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 10,
+                      left: 16,
+                      child: Text(
+                        widget.storeName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: Text(
+                widget.storeName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0D1512),
+                ),
               ),
             ),
-          ),
 
           const Divider(height: 1, color: Color(0xFFF0F2EF)),
 
@@ -370,6 +436,37 @@ class _RequestStatusScreenState extends ConsumerState<RequestStatusScreen>
             return _OrderItemRow(item: item, index: i);
           }),
 
+          const Divider(height: 1, color: Color(0xFFF0F2EF)),
+
+          // Delivery fee row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.local_shipping_outlined,
+                  size: 16,
+                  color: Color(0xFF9A9C97),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Delivery Fee',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF5A5C56)),
+                ),
+                const Spacer(),
+                Text(
+                  _formatAmount(widget.deliveryFee),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF202123),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
           const Divider(height: 1, color: Color(0xFFF0F2EF)),
 
           // Delivery estimate row

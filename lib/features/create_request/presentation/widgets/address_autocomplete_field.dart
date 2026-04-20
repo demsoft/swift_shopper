@@ -33,6 +33,8 @@ class _AddressAutocompleteFieldState
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   late final Debouncer _debouncer;
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
 
   _FieldState _fieldState = _FieldState.idle;
   List<PlacePrediction> _predictions = [];
@@ -50,12 +52,33 @@ class _AddressAutocompleteFieldState
 
   @override
   void dispose() {
+    _removeOverlay();
     _debouncer.dispose();
     _focusNode
       ..removeListener(_onFocusChanged)
       ..dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _showOrUpdateOverlay() {
+    if (_overlayEntry == null) {
+      _overlayEntry = OverlayEntry(
+        builder: (_) => _DropdownOverlay(
+          layerLink: _layerLink,
+          predictions: _predictions,
+          onSelect: _selectPrediction,
+        ),
+      );
+      Overlay.of(context).insert(_overlayEntry!);
+    } else {
+      _overlayEntry!.markNeedsBuild();
+    }
   }
 
   String _generateSessionToken() {
@@ -68,7 +91,11 @@ class _AddressAutocompleteFieldState
       _sessionToken ??= _generateSessionToken();
     } else {
       if (mounted) {
-        setState(() => _fieldState = _FieldState.idle);
+        setState(() {
+          _fieldState = _FieldState.idle;
+          _predictions = [];
+        });
+        _removeOverlay();
       }
     }
   }
@@ -86,6 +113,7 @@ class _AddressAutocompleteFieldState
             trimmed.isEmpty ? _FieldState.idle : _FieldState.tooShort;
         _predictions = [];
       });
+      _removeOverlay();
       return;
     }
 
@@ -103,14 +131,15 @@ class _AddressAutocompleteFieldState
     if (!mounted) return;
 
     if (results == null) {
-      // Dedup or network error — show stale cache if available
       if (_lastCachedPredictions.isNotEmpty) {
         setState(() {
           _predictions = _lastCachedPredictions;
           _fieldState = _FieldState.results;
         });
+        _showOrUpdateOverlay();
       } else {
         setState(() => _fieldState = _FieldState.error);
+        _removeOverlay();
       }
       return;
     }
@@ -120,6 +149,7 @@ class _AddressAutocompleteFieldState
         _predictions = [];
         _fieldState = _FieldState.noResults;
       });
+      _removeOverlay();
       return;
     }
 
@@ -128,18 +158,20 @@ class _AddressAutocompleteFieldState
       _predictions = results;
       _fieldState = _FieldState.results;
     });
+    _showOrUpdateOverlay();
   }
 
   Future<void> _selectPrediction(PlacePrediction prediction) async {
     _suppressSearch = true;
     _controller.text = prediction.description;
+    _removeOverlay();
     setState(() {
       _fieldState = _FieldState.loading;
       _predictions = [];
     });
 
     final token = _sessionToken ?? _generateSessionToken();
-    _sessionToken = null; // close billing session before await
+    _sessionToken = null;
 
     final service = ref.read(placesServiceProvider);
     final place = await service.getPlaceDetails(prediction, token);
@@ -200,8 +232,6 @@ class _AddressAutocompleteFieldState
 
   @override
   Widget build(BuildContext context) {
-    final showDropdown =
-        _fieldState == _FieldState.results && _predictions.isNotEmpty;
     final statusMsg = _buildStatusMessage();
 
     return Column(
@@ -216,103 +246,145 @@ class _AddressAutocompleteFieldState
           ),
         ),
         const SizedBox(height: 14),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                onChanged: _onTextChanged,
-                maxLines: 1,
-                decoration: InputDecoration(
-                  hintText: _fieldState == _FieldState.idle
-                      ? 'Start typing to search…'
-                      : 'Search for an address…',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFB0B2AD),
-                    fontSize: 14,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(16),
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 14, 8, 14),
-                    child: Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.primary,
-                      size: 20,
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  onChanged: _onTextChanged,
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                    hintText: _fieldState == _FieldState.idle
+                        ? 'Start typing to search…'
+                        : 'Search for an address…',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFFB0B2AD),
+                      fontSize: 14,
                     ),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(),
-                  suffixIcon: _buildSuffix(),
-                  suffixIconConstraints: const BoxConstraints(),
-                ),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
-              ),
-              if (statusMsg != null)
-                Container(
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: Color(0xFFEEF0ED)),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 14, 8, 14),
+                      child: Icon(
+                        Icons.location_on_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
+                    prefixIconConstraints: const BoxConstraints(),
+                    suffixIcon: _buildSuffix(),
+                    suffixIconConstraints: const BoxConstraints(),
                   ),
-                  child: statusMsg,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF202123)),
                 ),
-              if (showDropdown)
-                Container(
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: Color(0xFFEEF0ED)),
+                if (statusMsg != null)
+                  Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFEEF0ED)),
+                      ),
                     ),
+                    child: statusMsg,
                   ),
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _predictions.length,
-                    itemBuilder: (context, index) {
-                      final prediction = _predictions[index];
-                      return GestureDetector(
-                        onTap: () => _selectPrediction(prediction),
-                        child: Container(
-                          color: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: Color(0xFF9A9C97),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  prediction.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF202123),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DropdownOverlay extends StatelessWidget {
+  const _DropdownOverlay({
+    required this.layerLink,
+    required this.predictions,
+    required this.onSelect,
+  });
+
+  final LayerLink layerLink;
+  final List<PlacePrediction> predictions;
+  final void Function(PlacePrediction) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      width: layerLink.leaderSize?.width ?? 300,
+      child: CompositedTransformFollower(
+        link: layerLink,
+        showWhenUnlinked: false,
+        offset: Offset(0, (layerLink.leaderSize?.height ?? 54) + 4),
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 220),
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: predictions.length,
+              itemBuilder: (ctx, index) {
+                final prediction = predictions[index];
+                final isLast = index == predictions.length - 1;
+                return InkWell(
+                  onTap: () => onSelect(prediction),
+                  borderRadius: BorderRadius.vertical(
+                    top: index == 0
+                        ? const Radius.circular(16)
+                        : Radius.zero,
+                    bottom: isLast
+                        ? const Radius.circular(16)
+                        : Radius.zero,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: isLast
+                          ? null
+                          : const Border(
+                              bottom: BorderSide(color: Color(0xFFEEF0ED)),
+                            ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Color(0xFF9A9C97),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            prediction.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF202123),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

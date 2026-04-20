@@ -241,7 +241,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '₦ 45,500.00',
+                    '₦ 0.00',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,

@@ -237,6 +237,12 @@ class _ActiveJobViewState extends ConsumerState<_ActiveJobView> {
                 const SizedBox(height: 12),
                 // Customer row
                 _CustomerRow(customerName: job.customerName, customerAvatarUrl: job.customerAvatarUrl, deliveryAddress: job.deliveryAddress, orderId: job.orderId),
+                const SizedBox(height: 12),
+                // Delivery info card
+                _DeliveryInfoCard(
+                  deliveryAddress: job.deliveryAddress,
+                  deliveryNotes: job.deliveryNotes,
+                ),
                 const SizedBox(height: 24),
                 // Shopping list header
                 Row(
@@ -481,6 +487,94 @@ class _StoreCard extends ConsumerWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliveryInfoCard extends StatelessWidget {
+  const _DeliveryInfoCard({required this.deliveryAddress, required this.deliveryNotes});
+  final String deliveryAddress;
+  final String deliveryNotes;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAddress = deliveryAddress.isNotEmpty;
+    final hasNotes = deliveryNotes.isNotEmpty;
+    if (!hasAddress && !hasNotes) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasAddress) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DELIVERY ADDRESS',
+                        style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          color: Color(0xFF9A9C97), letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        deliveryAddress,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0D1512), height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (hasAddress && hasNotes) const SizedBox(height: 12),
+          if (hasNotes) ...[
+            Container(height: 1, color: const Color(0xFFF0F2EF)),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.sticky_note_2_outlined, size: 16, color: Color(0xFFD4860A)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DELIVERY NOTES',
+                        style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          color: Color(0xFF9A9C97), letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        deliveryNotes,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF5A5C56), height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

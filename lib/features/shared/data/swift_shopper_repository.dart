@@ -151,6 +151,8 @@ class SwiftShopperRepository {
         shopperAvatarUrl: map['shopperAvatarUrl']?.toString(),
         pickedItemsCount: (map['pickedItemsCount'] as num? ?? 0).toInt(),
         totalItemsCount: (map['totalItemsCount'] as num? ?? 0).toInt(),
+        deliveryAddress: map['deliveryAddress']?.toString() ?? '',
+        deliveryNotes: map['deliveryNotes']?.toString() ?? '',
       );
     }).toList();
   }
