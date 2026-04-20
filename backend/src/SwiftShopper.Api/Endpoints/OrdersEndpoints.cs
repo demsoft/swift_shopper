@@ -295,6 +295,33 @@ public static class OrdersEndpoints
             return Results.Ok(history);
         });
 
+        // GET /api/orders/shopper/{orderId}/summary — shopper views completed job details
+        group.MapGet("/shopper/{orderId}/summary", async (
+            string orderId,
+            ClaimsPrincipal user,
+            ISwiftShopperService service,
+            CancellationToken cancellationToken) =>
+        {
+            var authenticatedShopperId = GetAuthenticatedUserId(user);
+            if (string.IsNullOrWhiteSpace(authenticatedShopperId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var isOwner = await service.IsOrderCompletedByShopperAsync(
+                orderId,
+                authenticatedShopperId,
+                cancellationToken);
+
+            if (!isOwner)
+            {
+                return Results.Forbid();
+            }
+
+            var summary = await service.GetOrderSummaryAsync(orderId, cancellationToken);
+            return summary is null ? Results.NotFound() : Results.Ok(summary);
+        });
+
         return group;
     }
 

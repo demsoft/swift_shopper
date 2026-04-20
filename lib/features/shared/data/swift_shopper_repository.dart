@@ -356,6 +356,47 @@ class SwiftShopperRepository {
     );
   }
 
+  Future<OrderSummaryData?> getShopperOrderSummary({required String orderId}) async {
+    final data = await apiClient.get('/api/orders/shopper/$orderId/summary');
+
+    if (data is! Map<String, dynamic>) return null;
+
+    final rawItems = data['items'] as List? ?? [];
+    final items =
+        rawItems.map((i) {
+          final m = i as Map<String, dynamic>;
+          return OrderSummaryItem(
+            name: m['name']?.toString() ?? '',
+            unit: m['unit']?.toString() ?? '',
+            quantity: (m['quantity'] as num? ?? 1).toInt(),
+            price: (m['price'] as num? ?? 0).toDouble(),
+            photoUrl: m['photoUrl']?.toString(),
+          );
+        }).toList();
+
+    final deliveredAt =
+        DateTime.tryParse(data['deliveredAt']?.toString() ?? '')?.toLocal();
+    final dateStr =
+        deliveredAt != null
+            ? '${deliveredAt.day}/${deliveredAt.month}/${deliveredAt.year}'
+            : '';
+
+    return OrderSummaryData(
+      orderId: orderId,
+      storeName: data['storeName']?.toString() ?? '',
+      storeAddress: data['storeAddress']?.toString() ?? '',
+      shopperName: data['shopperName']?.toString() ?? '',
+      deliveryAddress: data['deliveryAddress']?.toString() ?? '',
+      deliveredAt: dateStr,
+      items: items,
+      itemsSubtotal: (data['itemsSubtotal'] as num? ?? 0).toDouble(),
+      deliveryFee: (data['deliveryFee'] as num? ?? 0).toDouble(),
+      serviceFee: (data['serviceFee'] as num? ?? 0).toDouble(),
+      totalPaid: (data['totalPaid'] as num? ?? 0).toDouble(),
+    );
+  }
+
+
   // ── Customer: Create Request ───────────────────────────────────────────────
 
   Future<void> createRequest({

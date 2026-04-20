@@ -379,6 +379,17 @@ public class InMemorySwiftShopperService : ISwiftShopperService
         return Task.FromResult(request.CustomerId.Equals(customerId, StringComparison.OrdinalIgnoreCase));
     }
 
+    public Task<bool> IsOrderCompletedByShopperAsync(
+        string orderId,
+        string shopperId,
+        CancellationToken cancellationToken)
+    {
+        var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));
+        if (order is null) return Task.FromResult(false);
+
+        return Task.FromResult(order.ShopperId?.Equals(shopperId, StringComparison.OrdinalIgnoreCase) == true);
+    }
+
     public Task<bool> CanAccessOrderChatAsync(string orderId, string userId, CancellationToken cancellationToken)
     {
         var order = _orders.FirstOrDefault(x => x.Id.Equals(orderId, StringComparison.OrdinalIgnoreCase));

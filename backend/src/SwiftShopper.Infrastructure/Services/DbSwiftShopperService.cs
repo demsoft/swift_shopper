@@ -342,6 +342,13 @@ public class DbSwiftShopperService : ISwiftShopperService
             .AnyAsync(x => x.Id == requestId && x.CustomerId == customerId, cancellationToken);
     }
 
+    public async Task<bool> IsOrderCompletedByShopperAsync(
+        string orderId, string shopperId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Orders.AsNoTracking()
+            .AnyAsync(x => x.Id == orderId && x.ShopperId == shopperId, cancellationToken);
+    }
+
     public async Task<bool> CanAccessOrderChatAsync(
         string orderId, string userId, CancellationToken cancellationToken)
     {

@@ -16,7 +16,7 @@ class ShopperJobDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(orderSummaryProvider(order.orderId));
+    final summaryAsync = ref.watch(shopperOrderSummaryProvider(order.orderId));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F1),

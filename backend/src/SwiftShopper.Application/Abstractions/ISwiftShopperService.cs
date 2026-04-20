@@ -21,6 +21,7 @@ public interface ISwiftShopperService
     // ── Customer: Orders ──────────────────────────────────────────────────────
     Task<IReadOnlyList<ActiveOrderDto>> GetActiveOrdersAsync(string customerId, CancellationToken cancellationToken);
     Task<bool> IsOrderOwnedByCustomerAsync(string orderId, string customerId, CancellationToken cancellationToken);
+    Task<bool> IsOrderCompletedByShopperAsync(string orderId, string shopperId, CancellationToken cancellationToken);
     Task<bool> CanAccessOrderChatAsync(string orderId, string userId, CancellationToken cancellationToken);
     Task<OrderTrackingDto?> GetOrderTrackingAsync(string orderId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ActiveJobItemDto>> GetOrderItemsAsync(string orderId, CancellationToken cancellationToken);
