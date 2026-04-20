@@ -1683,8 +1683,9 @@ public class DbSwiftShopperService : ISwiftShopperService
         var user = await _dbContext.UserAccounts.FindAsync([userId], ct);
         if (user is null || user.Role != UserRole.Admin) return null;
 
-        user.FullName = dto.FullName.Trim();
-        user.PhoneNumber = dto.PhoneNumber.Trim();
+        var entry = _dbContext.Entry(user);
+        entry.Property(nameof(UserAccount.FullName)).CurrentValue = dto.FullName.Trim();
+        entry.Property(nameof(UserAccount.PhoneNumber)).CurrentValue = dto.PhoneNumber.Trim();
         user.IsActive = dto.IsActive;
         await _dbContext.SaveChangesAsync(ct);
 
